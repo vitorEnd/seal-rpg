@@ -587,6 +587,56 @@ class LocalCampaignMemberRepository
     return (await this.list()).filter((item) => item.userId === userId);
   }
 
+  async requestAccess(
+    campaignId: EntityId,
+    userId: EntityId,
+  ): Promise<CampaignMember> {
+    return this.database.mutate((database) => {
+      const campaignExists = database.campaigns.some(
+        (campaign) => campaign.id === campaignId,
+      );
+      const user = database.users.find((candidate) => candidate.id === userId);
+
+      if (!campaignExists) {
+        throw new Error("CAMPAIGN_NOT_FOUND");
+      }
+      if (!user || user.status !== "active") {
+        throw new Error("AUTH_REQUIRED");
+      }
+
+      const now = new Date().toISOString();
+      const current = database.campaignMembers.find(
+        (membership) =>
+          membership.campaignId === campaignId && membership.userId === userId,
+      );
+
+      if (current?.status === "approved") {
+        return structuredClone(current);
+      }
+
+      if (current) {
+        current.role = "player";
+        current.status = "pending";
+        current.joinedAt = now;
+        current.updatedAt = now;
+        return structuredClone(current);
+      }
+
+      const membership: CampaignMember = {
+        id: randomUUID(),
+        campaignId,
+        userId,
+        role: "player",
+        status: "pending",
+        joinedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      database.campaignMembers.push(membership);
+      return structuredClone(membership);
+    });
+  }
+
   async findMembership(
     campaignId: EntityId,
     userId: EntityId,

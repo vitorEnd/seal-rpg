@@ -464,6 +464,14 @@ a, button, input, textarea, select, summary { outline-color: var(--signal); }
 .archive-card-copy span { color: #707a80; font-family: "Cascadia Code", monospace; font-size: .56rem; letter-spacing: .1em; text-transform: uppercase; }
 .archive-card-copy strong { display: flex; align-items: center; justify-content: space-between; color: #e7e5e1; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
 .archive-card-copy i { color: var(--campaign-primary); font-family: monospace; font-size: 1rem; font-style: normal; }
+.campaign-access-card { cursor: default; }
+.campaign-access-form { display: grid; gap: .75rem; }
+.campaign-access-button { display: flex; width: 100%; min-height: 3.25rem; align-items: center; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--campaign-primary) 55%, transparent); background: color-mix(in srgb, var(--campaign-primary) 12%, #0d1114); padding: .8rem 1rem; color: #f2f0ec; font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; transition: background .2s ease, border-color .2s ease, color .2s ease; }
+.campaign-access-button:hover:not(:disabled) { border-color: var(--campaign-primary); background: color-mix(in srgb, var(--campaign-primary) 22%, #0d1114); color: #fff; }
+.campaign-access-button:disabled { cursor: wait; opacity: .65; }
+.campaign-access-status { display: flex; align-items: center; gap: .65rem; margin: 0; color: #d7c28d; font-family: "Cascadia Code", monospace; font-size: .62rem; font-weight: 700; letter-spacing: .08em; line-height: 1.5; text-transform: uppercase; }
+.campaign-access-status i { width: .55rem; height: .55rem; flex: 0 0 auto; border-radius: 999px; background: #e5b96d; box-shadow: 0 0 0 .3rem rgba(229,185,109,.09), 0 0 1rem rgba(229,185,109,.35); animation: access-status-pulse 2s ease-in-out infinite; }
+@keyframes access-status-pulse { 50% { opacity: .45; transform: scale(.85); } }
 .directory-frame { min-height: calc(100vh - 5rem); }
 .directory-heading { align-items: flex-end; }
 .directory-heading h1 { font-size: clamp(3.2rem, 8vw, 7rem); }

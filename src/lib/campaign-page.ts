@@ -7,7 +7,11 @@ import type { AuthSession } from "@/application/auth/auth-provider";
 import type { Campaign, CampaignMember } from "@/domain/entities";
 import { canViewCampaign } from "@/domain/permissions";
 import { getCurrentSession } from "@/lib/auth/current-user";
-import { getCampaignAccess, getCampaignExperience } from "@/lib/campaign-data";
+import {
+  getCampaignAccess,
+  getCampaignDirectory,
+  getCampaignExperience,
+} from "@/lib/campaign-data";
 
 export type CampaignPageContext =
   | {
@@ -36,6 +40,12 @@ export async function loadCampaignPage(
 
   const access = await getCampaignAccess(slug, session.user.id);
   if (!access) {
+    const publicCampaign = (await getCampaignDirectory()).some(
+      (campaign) => campaign.slug === slug,
+    );
+    if (publicCampaign) {
+      redirect("/campaigns");
+    }
     notFound();
   }
 

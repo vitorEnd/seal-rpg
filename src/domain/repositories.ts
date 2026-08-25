@@ -103,6 +103,10 @@ export interface CampaignMemberRepository
   extends CrudRepository<CampaignMember> {
   listByCampaign(campaignId: EntityId): Promise<CampaignMember[]>;
   listByUser(userId: EntityId): Promise<CampaignMember[]>;
+  requestAccess(
+    campaignId: EntityId,
+    userId: EntityId,
+  ): Promise<CampaignMember>;
   findMembership(
     campaignId: EntityId,
     userId: EntityId,

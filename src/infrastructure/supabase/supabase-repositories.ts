@@ -381,6 +381,17 @@ class SupabaseCampaignMemberRepository
     if (error) throwDatabaseError(error);
     return data.map(mapCampaignMemberRow);
   }
+  async requestAccess(campaignId: EntityId, userId: EntityId) {
+    const { data, error } = await this.client.rpc(
+      "request_campaign_membership",
+      { target_campaign_id: campaignId },
+    );
+    if (error) throwDatabaseError(error);
+    if (!data || data.user_id !== userId) {
+      throw new Error("O Supabase não confirmou a solicitação de acesso.");
+    }
+    return mapCampaignMemberRow(data);
+  }
   async findMembership(campaignId: EntityId, userId: EntityId) {
     const { data, error } = await this.client
       .from("campaign_members")

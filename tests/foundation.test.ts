@@ -360,6 +360,66 @@ describe("conteúdo inicial honesto", () => {
   });
 });
 
+describe("solicitação de acesso à campanha", () => {
+  it("cria um vínculo pendente e reaproveita recusas sem duplicar registros", async () => {
+    const { database } = await createTestDatabase();
+    const repositories = createLocalRepositories(database);
+    const player = (await repositories.users.list()).find(
+      (user) => user.role === "player",
+    );
+    expect(player).toBeDefined();
+
+    const campaign = await repositories.campaigns.create(
+      campaignInput("operacao-resgate", "Operação Resgate"),
+    );
+    const requested = await repositories.campaignMembers.requestAccess(
+      campaign.id,
+      player!.id,
+    );
+
+    expect(requested).toMatchObject({
+      campaignId: campaign.id,
+      userId: player!.id,
+      role: "player",
+      status: "pending",
+    });
+
+    await repositories.campaignMembers.update(requested.id, {
+      role: "game_master",
+      status: "rejected",
+    });
+    const requestedAgain = await repositories.campaignMembers.requestAccess(
+      campaign.id,
+      player!.id,
+    );
+
+    expect(requestedAgain.id).toBe(requested.id);
+    expect(requestedAgain).toMatchObject({
+      role: "player",
+      status: "pending",
+    });
+    expect(
+      await repositories.campaignMembers.listByCampaign(campaign.id),
+    ).toHaveLength(1);
+  });
+
+  it("mantém um acesso já aprovado de forma idempotente", async () => {
+    const { database } = await createTestDatabase();
+    const repositories = createLocalRepositories(database);
+    const campaign = (await repositories.campaigns.list())[0];
+    const approved = (await repositories.campaignMembers.listByCampaign(
+      campaign.id,
+    ))[0];
+
+    const result = await repositories.campaignMembers.requestAccess(
+      campaign.id,
+      approved.userId,
+    );
+
+    expect(result).toEqual(approved);
+  });
+});
+
 describe("autenticação local DEV ONLY", () => {
   it("entra com o admin seed, mantém a sessão e revoga no logout", async () => {
     const { database } = await createTestDatabase();

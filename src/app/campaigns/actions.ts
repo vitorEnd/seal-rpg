@@ -24,6 +24,13 @@ import { fileStorageProvider, repositories } from "@/lib/container";
 import { removeTabletopFiles } from "@/lib/tabletop-files";
 
 const idSchema = z.string().uuid();
+const accessRequestSchema = z.object({
+  campaignId: idSchema,
+  campaignSlug: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Campanha inválida."),
+});
 const colorSchema = z.string().trim().regex(/^#[0-9a-f]{6}$/i, "Cor inválida.");
 const optionalDateSchema = z
   .string()
@@ -113,6 +120,50 @@ async function removeStoredKeys(keys: Array<string | null | undefined>) {
   const failureCount = results.filter((result) => result.status === "rejected").length;
   if (failureCount) {
     console.warn(`Não foi possível limpar ${failureCount} arquivo(s) local(is).`);
+  }
+}
+
+export async function requestCampaignAccessAction(
+  previousState: MutationState,
+  formData: FormData,
+): Promise<MutationState> {
+  const session = await getCurrentSession();
+  if (!session) {
+    return mutationError(
+      "Entre novamente para solicitar acesso.",
+      previousState,
+    );
+  }
+
+  const parsed = accessRequestSchema.safeParse({
+    campaignId: formData.get("campaignId"),
+    campaignSlug: formData.get("campaignSlug"),
+  });
+  if (!parsed.success) {
+    return mutationError("Campanha inválida.", previousState);
+  }
+
+  try {
+    const membership = await repositories.campaignMembers.requestAccess(
+      parsed.data.campaignId,
+      session.user.id,
+    );
+
+    revalidatePath("/campaigns");
+    revalidatePath(`/campaigns/${parsed.data.campaignSlug}`);
+    revalidatePath("/admin");
+
+    return mutationSuccess(
+      membership.status === "approved"
+        ? "Seu acesso a esta campanha já está aprovado."
+        : "Solicitação enviada. O administrador já pode aprovar seu acesso.",
+      previousState,
+    );
+  } catch {
+    return mutationError(
+      "Não foi possível solicitar acesso agora. Tente novamente.",
+      previousState,
+    );
   }
 }
 
