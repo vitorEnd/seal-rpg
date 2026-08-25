@@ -58,6 +58,7 @@ function toSession(
   const expiresAt = new Date(
     (expiresAtSeconds ?? Math.floor(Date.now() / 1000) + 3600) * 1000,
   ).toISOString();
+
   return { token, expiresAt, user: toUser(profile) };
 }
 
@@ -71,12 +72,14 @@ async function loadCurrentProfile(
 
 async function resolveUsername(identifier: string): Promise<ProfileRow | null> {
   if (!/^[a-z0-9_]{3,24}$/.test(identifier)) return null;
+
   const service = createServiceClient();
   const { data, error } = await service
     .from("profiles")
     .select("*")
     .eq("username", identifier)
     .maybeSingle();
+
   if (error) throw error;
   return data;
 }
@@ -86,6 +89,7 @@ async function ensureRegistrationIsAvailable(
   email: string,
 ): Promise<void> {
   const service = createServiceClient();
+
   const [usernameResult, emailResult] = await Promise.all([
     service.from("profiles").select("id").eq("username", username).maybeSingle(),
     service.from("profiles").select("id").eq("email", email).maybeSingle(),
@@ -93,14 +97,19 @@ async function ensureRegistrationIsAvailable(
 
   if (usernameResult.error) throw usernameResult.error;
   if (emailResult.error) throw emailResult.error;
+
   if (usernameResult.data) {
     throw new AuthError(
       "duplicate_username",
       "Este nome de usuário já está em uso.",
     );
   }
+
   if (emailResult.data) {
-    throw new AuthError("duplicate_email", "Este e-mail já está em uso.");
+    throw new AuthError(
+      "duplicate_email",
+      "Este e-mail já está em uso.",
+    );
   }
 }
 
@@ -120,24 +129,37 @@ export class SupabaseAuthProvider implements AuthProvider {
 
     if (!identifier.includes("@")) {
       const profile = await resolveUsername(identifier);
+
       if (!profile) throw invalidCredentials();
+
       if (profile.status !== "active") {
-        throw new AuthError("disabled_user", "Este usuário está desativado.");
+        throw new AuthError(
+          "disabled_user",
+          "Este usuário está desativado.",
+        );
       }
+
       email = profile.email;
     }
 
     const client = await createClient();
+
     const { data, error } = await client.auth.signInWithPassword({
       email,
       password: input.password,
     });
+
     if (error || !data.session) throw invalidCredentials();
 
     const profile = await loadCurrentProfile(client);
+
     if (!profile || profile.status !== "active") {
       await client.auth.signOut({ scope: "local" });
-      throw new AuthError("disabled_user", "Este usuário está desativado.");
+
+      throw new AuthError(
+        "disabled_user",
+        "Este usuário está desativado.",
+      );
     }
 
     return toSession(
@@ -150,9 +172,11 @@ export class SupabaseAuthProvider implements AuthProvider {
   async signUp(input: SignUpInput): Promise<AuthSession> {
     const username = normalize(input.username);
     const email = normalize(input.email);
+
     await ensureRegistrationIsAvailable(username, email);
 
     const client = await createClient();
+
     const { data, error } = await client.auth.signUp({
       email,
       password: input.password,
@@ -166,8 +190,12 @@ export class SupabaseAuthProvider implements AuthProvider {
 
     if (error) {
       if (error.code === "user_already_exists") {
-        throw new AuthError("duplicate_email", "Este e-mail já está em uso.");
+        throw new AuthError(
+          "duplicate_email",
+          "Este e-mail já está em uso.",
+        );
       }
+
       throw error;
     }
 
@@ -179,9 +207,13 @@ export class SupabaseAuthProvider implements AuthProvider {
     }
 
     const profile = await loadCurrentProfile(client);
+
     if (!profile) {
       await client.auth.signOut({ scope: "local" });
-      throw new Error("O perfil do novo usuário não foi criado pelo Supabase.");
+
+      throw new Error(
+        "O perfil do novo usuário não foi criado pelo Supabase.",
+      );
     }
 
     return toSession(
@@ -194,50 +226,80 @@ export class SupabaseAuthProvider implements AuthProvider {
   async getCurrentSession(): Promise<AuthSession | null> {
     const client = await createClient();
     const { data, error } = await client.auth.getClaims();
-    const subject = data?.claims.sub;
-    if (error || typeof subject !== "string") return null;
 
+    const claims = data?.claims;
+
+    if (error || !claims || typeof claims.sub !== "string") {
+      return null;
+    }
+
+    const subject = claims.sub;
     const profile = await loadCurrentProfile(client);
-    if (!profile || profile.id !== subject || profile.status !== "active") {
+
+    if (
+      !profile ||
+      profile.id !== subject ||
+      profile.status !== "active"
+    ) {
       return null;
     }
 
     return toSession(
       profile,
       "",
-      typeof data.claims.exp === "number" ? data.claims.exp : undefined,
+      typeof claims.exp === "number" ? claims.exp : undefined,
     );
   }
 
   async getSession(token: string): Promise<AuthSession | null> {
     if (!token) return null;
+
     const { url, publishableKey } = getPublicSupabaseConfig();
+
     const client = createSupabaseClient<Database>(url, publishableKey, {
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,
         persistSession: false,
       },
-      global: { headers: { Authorization: `Bearer ${token}` } },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
     });
-    const { data, error } = await client.auth.getClaims(token);
-    const subject = data?.claims.sub;
-    if (error || typeof subject !== "string") return null;
 
-    const profile = await loadCurrentProfile(client);
-    if (!profile || profile.id !== subject || profile.status !== "active") {
+    const { data, error } = await client.auth.getClaims(token);
+    const claims = data?.claims;
+
+    if (error || !claims || typeof claims.sub !== "string") {
       return null;
     }
+
+    const subject = claims.sub;
+    const profile = await loadCurrentProfile(client);
+
+    if (
+      !profile ||
+      profile.id !== subject ||
+      profile.status !== "active"
+    ) {
+      return null;
+    }
+
     return toSession(
       profile,
       token,
-      typeof data.claims.exp === "number" ? data.claims.exp : undefined,
+      typeof claims.exp === "number" ? claims.exp : undefined,
     );
   }
 
   async signOut(_token: string): Promise<void> {
     const client = await createClient();
     const { error } = await client.auth.signOut({ scope: "local" });
-    if (error && error.code !== "session_not_found") throw error;
+
+    if (error && error.code !== "session_not_found") {
+      throw error;
+    }
   }
 }

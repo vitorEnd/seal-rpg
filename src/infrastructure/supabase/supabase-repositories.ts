@@ -171,11 +171,17 @@ abstract class SupabaseCrudRepository<
   }
 
   async findById(id: EntityId): Promise<T | null> {
-    const { data, error } = await this.client
-      .from(this.table)
+    // Supabase's generated generic table type cannot prove that every N used
+    // by this CRUD base has an "id" column, although every concrete repository
+    // that extends this class does. Keep the escape hatch isolated here.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query = this.client.from(this.table) as any;
+
+    const { data, error } = await query
       .select("*")
       .eq("id", id)
       .maybeSingle();
+
     if (error) throwDatabaseError(error);
     return data ? this.mapRow(data as unknown as TableRow<N>) : null;
   }
@@ -186,28 +192,35 @@ abstract class SupabaseCrudRepository<
       .insert(this.encodeCreate(input) as never)
       .select("*")
       .single();
+
     if (error) throwDatabaseError(error, this.conflict);
     return this.mapRow(data as unknown as TableRow<N>);
   }
 
   async update(id: EntityId, input: UpdateEntityInput<T>): Promise<T | null> {
-    const { data, error } = await this.client
-      .from(this.table)
-      .update(this.encodeUpdate(input) as never)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query = this.client.from(this.table) as any;
+
+    const { data, error } = await query
+      .update(this.encodeUpdate(input))
       .eq("id", id)
       .select("*")
       .maybeSingle();
+
     if (error) throwDatabaseError(error, this.conflict);
     return data ? this.mapRow(data as unknown as TableRow<N>) : null;
   }
 
   async delete(id: EntityId): Promise<boolean> {
-    const { data, error } = await this.client
-      .from(this.table)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query = this.client.from(this.table) as any;
+
+    const { data, error } = await query
       .delete()
       .eq("id", id)
       .select("id")
       .maybeSingle();
+
     if (error) throwDatabaseError(error);
     return Boolean(data);
   }
