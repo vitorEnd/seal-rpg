@@ -77,6 +77,12 @@ const NEPTUNE_MAP_IDS = {
   safehouseExterior: "12000000-0000-4000-8000-000000000010",
   safehouseGroundFloor: "12000000-0000-4000-8000-000000000011",
   safehouseBasement: "12000000-0000-4000-8000-000000000012",
+  superbowlDistrictExterior: "12000000-0000-4000-8000-000000000013",
+  superbowlUndergroundParking: "12000000-0000-4000-8000-000000000014",
+  superbowlConventionGroundFloor: "12000000-0000-4000-8000-000000000015",
+  superbowlCorporateFloors: "12000000-0000-4000-8000-000000000016",
+  superbowlRestrictedSector: "12000000-0000-4000-8000-000000000017",
+  superbowlExecutiveRooftop: "12000000-0000-4000-8000-000000000018",
 } as const;
 
 function builtInTableMaps(campaigns: Campaign[]): VirtualTableMap[] {
@@ -230,6 +236,78 @@ function builtInTableMaps(campaigns: Campaign[]): VirtualTableMap[] {
       builtInImageUrl: "/art/maps/neptune-safehouse-basement.png",
       scale: "medium",
       order: 62,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlDistrictExterior,
+      name: "Operação Super Bowl — exterior do distrito",
+      description:
+        "Ruas cobertas de neve, barricadas, torcedores, polícia e o acesso principal à torre.",
+      groupName: "Operação Super Bowl",
+      layerName: "Exterior / distrito",
+      builtInImageUrl: "/art/maps/neptune-superbowl-district-exterior.png",
+      scale: "huge",
+      order: 70,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlUndergroundParking,
+      name: "Operação Super Bowl — estacionamento subterrâneo",
+      description:
+        "Garagem, docas, elevadores de serviço, depósitos e rotas usadas pelo mensageiro.",
+      groupName: "Operação Super Bowl",
+      layerName: "Estacionamento subterrâneo",
+      builtInImageUrl: "/art/maps/neptune-superbowl-underground-parking.png",
+      scale: "large",
+      order: 71,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlConventionGroundFloor,
+      name: "Operação Super Bowl — centro de convenções",
+      description:
+        "Lobby, evento privado, restaurantes e corredores onde civis e suspeitos se misturam.",
+      groupName: "Operação Super Bowl",
+      layerName: "Centro de convenções / térreo",
+      builtInImageUrl: "/art/maps/neptune-superbowl-convention-ground-floor.png",
+      scale: "huge",
+      order: 72,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlCorporateFloors,
+      name: "Operação Super Bowl — andares corporativos",
+      description:
+        "Escritórios, reuniões, servidores, arquivos e segurança privada no coração da investigação.",
+      groupName: "Operação Super Bowl",
+      layerName: "Andares corporativos",
+      builtInImageUrl: "/art/maps/neptune-superbowl-corporate-floors.png",
+      scale: "large",
+      order: 73,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlRestrictedSector,
+      name: "Operação Super Bowl — setor restrito",
+      description:
+        "Laboratório clandestino com contenção, cofres e equipamentos experimentais.",
+      groupName: "Operação Super Bowl",
+      layerName: "Setor restrito",
+      builtInImageUrl: "/art/maps/neptune-superbowl-restricted-sector.png",
+      scale: "large",
+      order: 74,
+    },
+    {
+      ...common,
+      id: NEPTUNE_MAP_IDS.superbowlExecutiveRooftop,
+      name: "Operação Super Bowl — andar executivo e cobertura",
+      description:
+        "Salão panorâmico, suíte executiva, heliponto e estruturas de manutenção para o confronto final.",
+      groupName: "Operação Super Bowl",
+      layerName: "Andar executivo / cobertura",
+      builtInImageUrl: "/art/maps/neptune-superbowl-executive-rooftop.png",
+      scale: "large",
+      order: 75,
     },
   ];
 }

@@ -91,7 +91,7 @@ describe("conteúdo inicial honesto", () => {
     expect(snapshot.virtualTables).toEqual([]);
     expect(snapshot.virtualTableTokens).toEqual([]);
     expect(snapshot.diceRolls).toEqual([]);
-    expect(snapshot.virtualTableMaps).toHaveLength(12);
+    expect(snapshot.virtualTableMaps).toHaveLength(18);
     expect(snapshot.virtualTableMaps[0]).toMatchObject({
       name: "Navio cargueiro — convés principal",
       groupName: "Navio cargueiro",
@@ -99,6 +99,11 @@ describe("conteúdo inicial honesto", () => {
       scale: "huge",
       builtIn: true,
     });
+    expect(
+      snapshot.virtualTableMaps.some(
+        (map) => map.groupName === "Operação Super Bowl",
+      ),
+    ).toBe(true);
     expect(snapshot.characters).toEqual([]);
     expect(snapshot.missions).toEqual([]);
     expect(snapshot.campaignEvents).toEqual([]);
@@ -141,7 +146,7 @@ describe("conteúdo inicial honesto", () => {
     expect(migrated.virtualTables).toEqual([]);
     expect(migrated.virtualTableTokens).toEqual([]);
     expect(migrated.diceRolls).toEqual([]);
-    expect(migrated.virtualTableMaps).toHaveLength(12);
+    expect(migrated.virtualTableMaps).toHaveLength(18);
     expect(migrated.campaigns[0]?.coverImageStorageKey).toBeNull();
   });
 
@@ -162,7 +167,7 @@ describe("conteúdo inicial honesto", () => {
     expect(migrated.virtualTables).toEqual([]);
     expect(migrated.virtualTableTokens).toEqual([]);
     expect(migrated.diceRolls).toEqual([]);
-    expect(migrated.virtualTableMaps).toHaveLength(12);
+    expect(migrated.virtualTableMaps).toHaveLength(18);
   });
 
   it("migra capítulos v5 sem inventar conclusões e bloqueia os posteriores", async () => {
@@ -252,7 +257,7 @@ describe("conteúdo inicial honesto", () => {
 
     const migrated = await database.read();
     expect(migrated.schemaVersion).toBe(6);
-    expect(migrated.virtualTableMaps).toHaveLength(12);
+    expect(migrated.virtualTableMaps).toHaveLength(18);
     expect(migrated.virtualTableMaps[0]?.description).toBe(
       "Descrição local preservada",
     );
@@ -264,6 +269,12 @@ describe("conteúdo inicial honesto", () => {
       "Safehouse urbano",
       "Safehouse urbano",
       "Safehouse urbano",
+      "Operação Super Bowl",
+      "Operação Super Bowl",
+      "Operação Super Bowl",
+      "Operação Super Bowl",
+      "Operação Super Bowl",
+      "Operação Super Bowl",
     ]);
     expect(migrated.characterClassOptions[0]).toMatchObject({
       logoImageUrl: null,
@@ -346,6 +357,12 @@ describe("conteúdo inicial honesto", () => {
       "Rua e exterior",
       "Térreo",
       "Porão oculto",
+      "Exterior / distrito",
+      "Estacionamento subterrâneo",
+      "Centro de convenções / térreo",
+      "Andares corporativos",
+      "Setor restrito",
+      "Andar executivo / cobertura",
     ]);
     expect(migrated.virtualTables[0]?.activeMapId).toBe(
       migrated.virtualTableMaps[0]?.id,

@@ -572,7 +572,7 @@ describe("repositório da mesa virtual", () => {
     const builtInMaps = await fixture.repositories.tabletop.listMapsByCampaign(
       fixture.campaign.id,
     );
-    expect(builtInMaps).toHaveLength(12);
+    expect(builtInMaps).toHaveLength(18);
     expect(fixture.table.activeMapId).toBe(builtInMaps[0]?.id);
     expect(builtInMaps.slice(0, 3).map((map) => map.layerName)).toEqual([
       "Convés principal",
@@ -704,7 +704,7 @@ describe("repositório da mesa virtual", () => {
       fixture.campaign.slug,
       { includeHiddenTokens: true },
     );
-    expect(snapshot?.maps).toHaveLength(12);
+    expect(snapshot?.maps).toHaveLength(18);
     expect(snapshot?.table.activeMapId).toBe(snapshot?.maps[0]?.id);
     expect(snapshot?.tokens[0]).toMatchObject({
       accentColor: "#38bdf8",
