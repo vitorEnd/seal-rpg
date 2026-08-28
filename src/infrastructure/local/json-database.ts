@@ -540,6 +540,14 @@ function normalizeLocalDatabase(value: unknown): LocalDatabase | null {
       chapter,
     ]),
   );
+
+  const files = (candidate.files as Array<Record<string, unknown>>).map(
+    (file) => ({
+      ...file,
+      createdByUserId:
+        typeof file.createdByUserId === "string" ? file.createdByUserId : null,
+    }),
+  );
   const defaultMapByCampaign = new Map<string, string>();
   for (const map of virtualTableMaps
     .slice()
@@ -730,6 +738,7 @@ function normalizeLocalDatabase(value: unknown): LocalDatabase | null {
     characterClassOptions:
       characterClassOptions as LocalDatabase["characterClassOptions"],
     campaignSessions: campaignSessions as LocalDatabase["campaignSessions"],
+    files: files as LocalDatabase["files"],
     virtualTables: virtualTables as unknown as LocalDatabase["virtualTables"],
     virtualTableMaps,
     virtualTableTokens: virtualTableTokens as LocalDatabase["virtualTableTokens"],

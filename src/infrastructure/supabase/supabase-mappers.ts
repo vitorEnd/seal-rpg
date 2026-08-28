@@ -290,6 +290,7 @@ export function mapGameFileRow(row: TableRow<"game_files">): GameFile {
   return {
     id: row.id,
     campaignId: row.campaign_id,
+    createdByUserId: row.created_by_user_id,
     name: row.name,
     description: row.description,
     category: row.category as GameFile["category"],

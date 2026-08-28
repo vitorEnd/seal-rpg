@@ -887,6 +887,7 @@ a, button, input, textarea, select, summary { outline-color: var(--signal); }
 .vtt-checkbox input { accent-color: var(--campaign-primary); }
 .vtt-checkbox span { text-transform: none !important; }
 .vtt-map-upload { padding: 1rem; border: 1px dashed rgba(255,255,255,.18); background: rgba(255,255,255,.02); }
+.vtt-form-error { margin: 1rem 0 0; padding: .8rem .9rem; border: 1px solid rgba(213,95,74,.5); border-left: 3px solid #d55f4a; background: rgba(213,95,74,.09); color: #efada0; font-size: .68rem; line-height: 1.55; }
 .vtt-form-actions { display: flex; margin-top: 1.15rem; justify-content: flex-end; gap: .55rem; }
 .vtt-form-actions button { min-height: 2.7rem; padding: .65rem .9rem; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.045); cursor: pointer; font-family: "Cascadia Code", monospace; font-size: .58rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
 .vtt-form-actions button:first-child { border-color: var(--campaign-primary); background: var(--campaign-primary); color: #080a0a; }

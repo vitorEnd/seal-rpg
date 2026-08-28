@@ -960,7 +960,12 @@ class SupabaseFileRepository
   implements FileRepository
 {
   constructor(client: SealRpgSupabaseClient) { super(client, "game_files", mapGameFileRow, { field: "storageKey", message: "Este arquivo já está cadastrado." }); }
-  protected encodeCreate(input: CreateEntityInput<GameFile>) { return encodeFile(input); }
+  protected encodeCreate(input: CreateEntityInput<GameFile>) {
+    return {
+      ...encodeFile(input),
+      created_by_user_id: input.createdByUserId,
+    };
+  }
   protected encodeUpdate(input: UpdateEntityInput<GameFile>) { return encodeFile(input); }
   async listByCampaign(campaignId: EntityId) {
     const { data, error } = await this.client.from("game_files").select("*").eq("campaign_id", campaignId).order("updated_at", { ascending: false });

@@ -1216,7 +1216,13 @@ export function VirtualTable({
           <div className="vtt-map-toolbar" data-vtt-ui>
             {canManage ? (
               <>
-                <button type="button" onClick={() => setModal("token")}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotice(null);
+                    setModal("token");
+                  }}
+                >
                   <b>+</b> Token
                 </button>
                 <button type="button" onClick={() => setMapLibraryOpen(true)}>
@@ -1677,6 +1683,11 @@ export function VirtualTable({
                 <span>Mostrar imediatamente para os jogadores</span>
               </label>
             </div>
+            {notice && !notice.ok ? (
+              <p className="vtt-form-error" role="alert">
+                {notice.message}
+              </p>
+            ) : null}
             <div className="vtt-form-actions">
               <button type="submit" disabled={pendingAction === "create-token"}>
                 {pendingAction === "create-token" ? "Adicionando..." : "Adicionar à mesa"}

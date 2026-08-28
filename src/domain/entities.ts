@@ -300,6 +300,7 @@ export type FileCategory =
 
 export interface GameFile extends EntityBase {
   campaignId: EntityId;
+  createdByUserId: EntityId | null;
   name: string;
   description: string;
   category: FileCategory;

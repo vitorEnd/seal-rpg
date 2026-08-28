@@ -163,12 +163,14 @@ async function storeTableImage({
   file,
   campaign,
   sessionId,
+  createdByUserId,
   name,
   category,
 }: {
   file: File;
   campaign: Campaign;
   sessionId: string;
+  createdByUserId: string;
   name: string;
   category: "map" | "image";
 }): Promise<GameFile> {
@@ -182,6 +184,7 @@ async function storeTableImage({
   try {
     gameFile = await repositories.files.create({
       campaignId: campaign.id,
+      createdByUserId,
       name,
       description: `Imagem usada na mesa da sessão ${sessionId}.`,
       category,
@@ -444,6 +447,7 @@ export async function createVirtualTableTokenAction(
         file: imageFile,
         campaign: context.campaign,
         sessionId: context.campaignSession.id,
+        createdByUserId: context.authSession.user.id,
         name: `Token — ${name}`,
         category: "image",
       });
@@ -650,6 +654,7 @@ export async function updateVirtualTableMapAction(
       file: mapFile,
       campaign: context.campaign,
       sessionId: context.campaignSession.id,
+      createdByUserId: context.authSession.user.id,
       name: `Mapa — ${mapFile.name}`,
       category: "map",
     });

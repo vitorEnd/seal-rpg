@@ -582,6 +582,7 @@ describe("repositório da mesa virtual", () => {
 
     const mapFile = await fixture.repositories.files.create({
       campaignId: fixture.campaign.id,
+      createdByUserId: fixture.gameMaster.id,
       name: "Mapa importado",
       description: "",
       category: "map",
@@ -933,6 +934,7 @@ describe("repositório da mesa virtual", () => {
     const fixture = await createOpenTableFixture();
     const mapFile = await fixture.repositories.files.create({
       campaignId: fixture.campaign.id,
+      createdByUserId: fixture.gameMaster.id,
       name: "Mapa temporário",
       description: "",
       category: "map",
@@ -943,6 +945,7 @@ describe("repositório da mesa virtual", () => {
     });
     const tokenFile = await fixture.repositories.files.create({
       campaignId: fixture.campaign.id,
+      createdByUserId: fixture.gameMaster.id,
       name: "Token temporário",
       description: "",
       category: "image",

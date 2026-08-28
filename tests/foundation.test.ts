@@ -555,6 +555,7 @@ describe("repositories e integridade", () => {
     });
     const file = await repositories.files.create({
       campaignId: campaign.id,
+      createdByUserId: null,
       name: "Arquivo da campanha",
       description: "",
       category: "other",
@@ -772,6 +773,7 @@ describe("repositories e integridade", () => {
     });
     const file = await repositories.files.create({
       campaignId: campaign.id,
+      createdByUserId: null,
       name: "Anexo temporário",
       description: "",
       category: "other",
