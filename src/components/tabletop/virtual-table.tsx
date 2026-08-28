@@ -1603,6 +1603,20 @@ export function VirtualTable({
                 <span>Nome</span>
                 <input name="name" maxLength={80} placeholder="Ex.: Sentinela" />
               </label>
+              <label>
+                <span>Quantidade de cópias</span>
+                <input
+                  name="quantity"
+                  type="number"
+                  min="1"
+                  max="20"
+                  step="1"
+                  defaultValue="1"
+                />
+                <small>
+                  Use 5 para criar cinco tokens iguais, numerados de 01 a 05.
+                </small>
+              </label>
               <label className="full-span">
                 <span>Personagem associado</span>
                 <select name="characterId" defaultValue="">
@@ -1690,7 +1704,9 @@ export function VirtualTable({
             ) : null}
             <div className="vtt-form-actions">
               <button type="submit" disabled={pendingAction === "create-token"}>
-                {pendingAction === "create-token" ? "Adicionando..." : "Adicionar à mesa"}
+                {pendingAction === "create-token"
+                  ? "Criando tokens..."
+                  : "Adicionar à mesa"}
               </button>
               <button type="button" onClick={() => setModal(null)}>
                 Cancelar

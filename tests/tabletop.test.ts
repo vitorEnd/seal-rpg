@@ -759,6 +759,106 @@ describe("repositório da mesa virtual", () => {
     ]);
   });
 
+  it("cria várias cópias de um token compartilhando a mesma imagem", async () => {
+    const fixture = await createOpenTableFixture();
+    const image = await fixture.repositories.files.create({
+      campaignId: fixture.campaign.id,
+      createdByUserId: fixture.gameMaster.id,
+      name: "Guarda do lote",
+      description: "Imagem compartilhada pelas cópias.",
+      category: "image",
+      visibility: "members",
+      storageKey: "table-tests/guard-batch.png",
+      mimeType: "image/png",
+      sizeBytes: 512,
+    });
+    const result = await fixture.repositories.tabletop.createTokens(
+      Array.from({ length: 5 }, (_, index) => ({
+        tableId: fixture.table.id,
+        mapId: fixture.table.activeMapId,
+        name: `Guarda ${String(index + 1).padStart(2, "0")}`,
+        kind: "npc" as const,
+        characterId: null,
+        imageFileId: image.id,
+        x: 0.34 + index * 0.07,
+        y: 0.42,
+        size: 0.04,
+        zIndex: index + 1,
+        visible: true,
+        disposition: "hostile" as const,
+        accentColor: "#ef4444",
+        notes: "Patrulha inimiga.",
+        collectible: false,
+        rotation: 0,
+        visionEnabled: true,
+        visionAngle: 70,
+        visionRange: 0.18,
+        visionColor: "#ef4444",
+      })),
+    );
+
+    expect(result.tokens).toHaveLength(5);
+    expect(result.tokens.map((token) => token.name)).toEqual([
+      "Guarda 01",
+      "Guarda 02",
+      "Guarda 03",
+      "Guarda 04",
+      "Guarda 05",
+    ]);
+    expect(new Set(result.tokens.map((token) => token.imageFileId))).toEqual(
+      new Set([image.id]),
+    );
+    expect(new Set(result.tokens.map((token) => token.id)).size).toBe(5);
+    expect(
+      new Set(result.tokens.map((token) => `${token.x}:${token.y}`)).size,
+    ).toBe(5);
+    expect(result.tokens.map((token) => token.zIndex)).toEqual([1, 2, 3, 4, 5]);
+    expect(result.table.revision).toBe(fixture.table.revision + 5);
+    expect(
+      await fixture.repositories.tabletop.listTokens(fixture.table.id),
+    ).toHaveLength(5);
+  });
+
+  it("cancela o lote inteiro quando uma das cópias é inválida", async () => {
+    const fixture = await createOpenTableFixture();
+    const characterToken = {
+      tableId: fixture.table.id,
+      mapId: fixture.table.activeMapId,
+      name: "Operador duplicado",
+      kind: "character" as const,
+      characterId: fixture.character.id,
+      imageFileId: null,
+      x: 0.4,
+      y: 0.45,
+      size: 0.04,
+      zIndex: 1,
+      visible: true,
+      disposition: "player" as const,
+      accentColor: "#38bdf8",
+      notes: "",
+      collectible: false,
+      rotation: 0,
+      visionEnabled: true,
+      visionAngle: 70,
+      visionRange: 0.18,
+      visionColor: "#38bdf8",
+    };
+
+    await expect(
+      fixture.repositories.tabletop.createTokens([
+        characterToken,
+        { ...characterToken, name: "Segunda cópia", zIndex: 2, x: 0.5 },
+      ]),
+    ).rejects.toMatchObject({ field: "characterId" });
+
+    expect(
+      await fixture.repositories.tabletop.listTokens(fixture.table.id),
+    ).toEqual([]);
+    expect(
+      (await fixture.repositories.tabletop.findById(fixture.table.id))?.revision,
+    ).toBe(fixture.table.revision);
+  });
+
   it("encerra a mesa de forma atômica e idempotente", async () => {
     const fixture = await createOpenTableFixture();
     const occurredAt = "2027-01-01T23:50:00.000Z";

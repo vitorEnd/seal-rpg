@@ -246,6 +246,9 @@ export interface TabletopRepository {
   createToken(
     input: CreateEntityInput<VirtualTableToken>,
   ): Promise<{ table: VirtualTable; token: VirtualTableToken }>;
+  createTokens(
+    inputs: CreateEntityInput<VirtualTableToken>[],
+  ): Promise<{ table: VirtualTable; tokens: VirtualTableToken[] }>;
   moveToken(
     tableId: EntityId,
     tokenId: EntityId,

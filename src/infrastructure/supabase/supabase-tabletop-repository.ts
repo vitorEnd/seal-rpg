@@ -397,44 +397,79 @@ export class SupabaseTabletopRepository implements TabletopRepository {
   async createToken(
     input: CreateEntityInput<VirtualTableToken>,
   ): Promise<{ table: VirtualTable; token: VirtualTableToken }> {
-    const table = await this.findById(input.tableId);
+    const result = await this.createTokens([input]);
+    const token = result.tokens[0];
+    if (!token) {
+      throw new RepositoryConflictError(
+        "token",
+        "Não foi possível criar o token.",
+      );
+    }
+    return { table: result.table, token };
+  }
+
+  async createTokens(
+    inputs: CreateEntityInput<VirtualTableToken>[],
+  ): Promise<{ table: VirtualTable; tokens: VirtualTableToken[] }> {
+    if (inputs.length < 1 || inputs.length > 20) {
+      throw new RepositoryConflictError(
+        "quantity",
+        "Crie entre 1 e 20 tokens por vez.",
+      );
+    }
+    const tableId = inputs[0]!.tableId;
+    if (inputs.some((input) => input.tableId !== tableId)) {
+      throw new RepositoryConflictError(
+        "table",
+        "Todos os tokens precisam pertencer à mesma mesa.",
+      );
+    }
+    const table = await this.findById(tableId);
     if (!table || table.status !== "open") {
       throw new RepositoryConflictError("table", "A mesa não está aberta.");
     }
-    const insert: TableInsert<"virtual_table_tokens"> = {
-      table_id: input.tableId,
-      campaign_id: table.campaignId,
-      map_id: input.mapId ?? table.activeMapId,
-      name: input.name,
-      kind: input.kind,
-      character_id: input.characterId,
-      image_file_id: input.imageFileId,
-      x: input.x,
-      y: input.y,
-      size: input.size,
-      z_index: input.zIndex,
-      visible: input.visible,
-      disposition: input.disposition ?? "neutral",
-      accent_color: input.accentColor ?? "#75a9c8",
-      notes: input.notes ?? "",
-      collectible: input.collectible ?? false,
-      rotation: input.rotation ?? 0,
-      vision_enabled: input.visionEnabled ?? input.kind !== "object",
-      vision_angle: input.visionAngle ?? 70,
-      vision_range: input.visionRange ?? 0.22,
-      vision_color: input.visionColor ?? input.accentColor ?? "#75a9c8",
-    };
+    const inserts: TableInsert<"virtual_table_tokens">[] = inputs.map(
+      (input) => ({
+        table_id: input.tableId,
+        campaign_id: table.campaignId,
+        map_id: input.mapId ?? table.activeMapId,
+        name: input.name,
+        kind: input.kind,
+        character_id: input.characterId,
+        image_file_id: input.imageFileId,
+        x: input.x,
+        y: input.y,
+        size: input.size,
+        z_index: input.zIndex,
+        visible: input.visible,
+        disposition: input.disposition ?? "neutral",
+        accent_color: input.accentColor ?? "#75a9c8",
+        notes: input.notes ?? "",
+        collectible: input.collectible ?? false,
+        rotation: input.rotation ?? 0,
+        vision_enabled: input.visionEnabled ?? input.kind !== "object",
+        vision_angle: input.visionAngle ?? 70,
+        vision_range: input.visionRange ?? 0.22,
+        vision_color: input.visionColor ?? input.accentColor ?? "#75a9c8",
+      }),
+    );
     const { data, error } = await this.client
       .from("virtual_table_tokens")
-      .insert(insert)
-      .select("*")
-      .single();
-    if (error) databaseConflict(error, "Não foi possível criar o token.");
+      .insert(inserts)
+      .select("*");
+    if (error) databaseConflict(error, "Não foi possível criar os tokens.");
+    const tokens = (data ?? []).map(mapVirtualTableTokenRow);
+    if (tokens.length !== inputs.length) {
+      throw new RepositoryConflictError(
+        "token",
+        "O banco não confirmou todos os tokens criados.",
+      );
+    }
     const revisedTable = await this.findById(table.id);
     if (!revisedTable) {
       throw new RepositoryConflictError("table", "A mesa não está mais aberta.");
     }
-    return { table: revisedTable, token: mapVirtualTableTokenRow(data) };
+    return { table: revisedTable, tokens };
   }
 
   async moveToken(

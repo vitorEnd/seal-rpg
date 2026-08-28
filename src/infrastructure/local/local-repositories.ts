@@ -1733,125 +1733,158 @@ class LocalTabletopRepository implements TabletopRepository {
   async createToken(
     input: CreateEntityInput<VirtualTableToken>,
   ): Promise<{ table: VirtualTable; token: VirtualTableToken }> {
-    assertNormalizedCoordinate(input.x);
-    assertNormalizedCoordinate(input.y);
-    assertTokenCustomization(input);
-    if (!Number.isInteger(input.zIndex) || input.zIndex < 0) {
+    const result = await this.createTokens([input]);
+    return { table: result.table, token: result.tokens[0]! };
+  }
+
+  async createTokens(
+    inputs: CreateEntityInput<VirtualTableToken>[],
+  ): Promise<{ table: VirtualTable; tokens: VirtualTableToken[] }> {
+    if (inputs.length < 1 || inputs.length > 20) {
       throw new RepositoryConflictError(
-        "zIndex",
-        "A ordem visual do token é inválida.",
+        "quantity",
+        "Crie entre 1 e 20 tokens por vez.",
       );
+    }
+    const tableId = inputs[0]!.tableId;
+    if (inputs.some((input) => input.tableId !== tableId)) {
+      throw new RepositoryConflictError(
+        "table",
+        "Todos os tokens precisam pertencer à mesma mesa.",
+      );
+    }
+    for (const input of inputs) {
+      assertNormalizedCoordinate(input.x);
+      assertNormalizedCoordinate(input.y);
+      assertTokenCustomization(input);
+      if (!Number.isInteger(input.zIndex) || input.zIndex < 0) {
+        throw new RepositoryConflictError(
+          "zIndex",
+          "A ordem visual do token é inválida.",
+        );
+      }
     }
     return this.database.mutate((database) => {
       const tableIndex = database.virtualTables.findIndex(
-        (item) => item.id === input.tableId && item.status === "open",
+        (item) => item.id === tableId && item.status === "open",
       );
       if (tableIndex === -1) {
         throw new RepositoryConflictError("table", "A mesa não está aberta.");
       }
       const currentTable = database.virtualTables[tableIndex];
-      const mapId = input.mapId ?? currentTable.activeMapId;
-      if (
-        mapId &&
-        !database.virtualTableMaps.some(
-          (map) =>
-            map.id === mapId && map.campaignId === currentTable.campaignId,
-        )
-      ) {
-        throw new RepositoryConflictError(
-          "mapId",
-          "O mapa do token não pertence a esta campanha.",
-        );
-      }
-      if (input.characterId) {
-        if (input.kind !== "character") {
+      const tokens: VirtualTableToken[] = [];
+
+      for (const input of inputs) {
+        const mapId = input.mapId ?? currentTable.activeMapId;
+        if (
+          mapId &&
+          !database.virtualTableMaps.some(
+            (map) =>
+              map.id === mapId && map.campaignId === currentTable.campaignId,
+          )
+        ) {
           throw new RepositoryConflictError(
-            "kind",
-            "Um token associado a uma ficha deve ser do tipo personagem.",
+            "mapId",
+            "O mapa do token não pertence a esta campanha.",
           );
         }
-        const character = database.characters.find(
-          (item) =>
-            item.id === input.characterId && item.campaignId === currentTable.campaignId,
-        );
-        if (!character) {
+        if (input.characterId) {
+          if (input.kind !== "character") {
+            throw new RepositoryConflictError(
+              "kind",
+              "Um token associado a uma ficha deve ser do tipo personagem.",
+            );
+          }
+          const character = database.characters.find(
+            (item) =>
+              item.id === input.characterId &&
+              item.campaignId === currentTable.campaignId,
+          );
+          if (!character) {
+            throw new RepositoryConflictError(
+              "characterId",
+              "O personagem não pertence a esta campanha.",
+            );
+          }
+        } else if (input.kind === "character") {
           throw new RepositoryConflictError(
             "characterId",
-            "O personagem não pertence a esta campanha.",
+            "Um token de personagem precisa estar associado a uma ficha.",
           );
         }
-      } else if (input.kind === "character") {
-        throw new RepositoryConflictError(
-          "characterId",
-          "Um token de personagem precisa estar associado a uma ficha.",
-        );
-      }
-      if (
-        input.imageFileId &&
-        !database.files.some(
-          (file) =>
-            file.id === input.imageFileId &&
-            file.campaignId === currentTable.campaignId,
-        )
-      ) {
-        throw new RepositoryConflictError(
-          "imageFileId",
-          "A imagem do token não pertence a esta campanha.",
-        );
-      }
-      if (
-        input.characterId &&
-        database.virtualTableTokens.some(
-          (item) =>
-            item.tableId === input.tableId && item.characterId === input.characterId,
-        )
-      ) {
-        throw new RepositoryConflictError(
-          "characterId",
-          "Este personagem já possui um token na mesa.",
-        );
-      }
-      const now = new Date().toISOString();
-      const token: VirtualTableToken = {
-        ...input,
-        mapId,
-        disposition:
-          input.disposition ??
-          (input.kind === "character"
-            ? "player"
-            : input.kind === "enemy"
-              ? "hostile"
+        if (
+          input.imageFileId &&
+          !database.files.some(
+            (file) =>
+              file.id === input.imageFileId &&
+              file.campaignId === currentTable.campaignId,
+          )
+        ) {
+          throw new RepositoryConflictError(
+            "imageFileId",
+            "A imagem do token não pertence a esta campanha.",
+          );
+        }
+        if (
+          input.characterId &&
+          database.virtualTableTokens.some(
+            (item) =>
+              item.tableId === input.tableId &&
+              item.characterId === input.characterId,
+          )
+        ) {
+          throw new RepositoryConflictError(
+            "characterId",
+            "Este personagem já possui um token na mesa.",
+          );
+        }
+        const now = new Date().toISOString();
+        const token: VirtualTableToken = {
+          ...input,
+          mapId,
+          disposition:
+            input.disposition ??
+            (input.kind === "character"
+              ? "player"
+              : input.kind === "enemy"
+                ? "hostile"
+                : input.kind === "object"
+                  ? "object"
+                  : "ally"),
+          accentColor:
+            input.accentColor ??
+            (input.kind === "enemy"
+              ? "#d45a4f"
               : input.kind === "object"
-                ? "object"
-                : "ally"),
-        accentColor:
-          input.accentColor ??
-          (input.kind === "enemy"
-            ? "#d45a4f"
-            : input.kind === "object"
-              ? "#d6a45d"
-              : "#5ea7a0"),
-        notes: input.notes ?? "",
-        collectible: input.collectible ?? false,
-        rotation: input.rotation ?? 0,
-        visionEnabled: input.visionEnabled ?? input.kind !== "object",
-        visionAngle: input.visionAngle ?? 70,
-        visionRange: input.visionRange ?? 0.22,
-        visionColor:
-          input.visionColor ??
-          input.accentColor ??
-          (input.kind === "enemy"
-            ? "#d45a4f"
-            : input.kind === "object"
-              ? "#d6a45d"
-              : "#5ea7a0"),
-        id: randomUUID(),
-        createdAt: now,
-        updatedAt: now,
-      };
-      database.virtualTableTokens.push(token);
-      const table = reviseVirtualTable(database, tableIndex);
-      return structuredClone({ table, token });
+                ? "#d6a45d"
+                : "#5ea7a0"),
+          notes: input.notes ?? "",
+          collectible: input.collectible ?? false,
+          rotation: input.rotation ?? 0,
+          visionEnabled: input.visionEnabled ?? input.kind !== "object",
+          visionAngle: input.visionAngle ?? 70,
+          visionRange: input.visionRange ?? 0.22,
+          visionColor:
+            input.visionColor ??
+            input.accentColor ??
+            (input.kind === "enemy"
+              ? "#d45a4f"
+              : input.kind === "object"
+                ? "#d6a45d"
+                : "#5ea7a0"),
+          id: randomUUID(),
+          createdAt: now,
+          updatedAt: now,
+        };
+        database.virtualTableTokens.push(token);
+        tokens.push(token);
+        reviseVirtualTable(database, tableIndex);
+      }
+
+      return structuredClone({
+        table: database.virtualTables[tableIndex],
+        tokens,
+      });
     });
   }
 

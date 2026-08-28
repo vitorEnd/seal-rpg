@@ -385,6 +385,7 @@ export async function createVirtualTableTokenAction(
         kind: tokenKindSchema,
         name: z.string().trim().max(80),
         characterId: z.union([idSchema, z.literal("")]),
+        quantity: z.coerce.number().int().min(1).max(20),
         size: z.coerce.number().finite().min(0.01).max(0.12),
         visible: z.boolean(),
         disposition: dispositionSchema.optional(),
@@ -403,6 +404,7 @@ export async function createVirtualTableTokenAction(
         kind: formData.get("kind"),
         name: formData.get("name") ?? "",
         characterId: formData.get("characterId") ?? "",
+        quantity: formData.get("quantity") || 1,
         size: formData.get("size") ?? 0.055,
         visible: formData.get("visible") === "on",
         disposition: formData.get("disposition") || undefined,
@@ -419,7 +421,9 @@ export async function createVirtualTableTokenAction(
         visionColor: formData.get("visionColor") || undefined,
       });
     if (!parsed.success) {
-      throw new TabletopActionError("Revise o nome, o tipo e o tamanho do token.");
+      throw new TabletopActionError(
+        "Revise o nome, o tipo, a quantidade e o tamanho do token.",
+      );
     }
     const context = await openTableContext(
       parsed.data.campaignSlug,
@@ -439,6 +443,11 @@ export async function createVirtualTableTokenAction(
     if (parsed.data.kind === "character" && !character) {
       throw new TabletopActionError("Selecione o personagem deste token.");
     }
+    if (character && parsed.data.quantity > 1) {
+      throw new TabletopActionError(
+        "Fichas de jogadores permitem somente um token por mesa.",
+      );
+    }
     const name = parsed.data.name || character?.name || "Token sem nome";
     if (name.length < 2) throw new TabletopActionError("Informe o nome do token.");
 
@@ -453,7 +462,6 @@ export async function createVirtualTableTokenAction(
       });
     }
     const existingTokens = await repositories.tabletop.listTokens(context.table.id);
-    const offset = existingTokens.length % 7;
     const effectiveKind = character ? "character" : parsed.data.kind;
     const defaultDisposition =
       effectiveKind === "character"
@@ -469,40 +477,70 @@ export async function createVirtualTableTokenAction(
         : effectiveKind === "object"
           ? "#d6a45d"
           : "#5ea7a0";
-    const result = await repositories.tabletop.createToken({
-      tableId: context.table.id,
-      mapId: context.table.activeMapId,
-      name,
-      kind: effectiveKind,
-      characterId: character?.id ?? null,
-      imageFileId: storedImage?.id ?? null,
-      x: 0.38 + offset * 0.04,
-      y: 0.48 + (offset % 2) * 0.08,
-      size: parsed.data.size,
-      zIndex:
-        existingTokens.reduce(
-          (highest, token) => Math.max(highest, token.zIndex),
-          0,
-        ) + 1,
-      visible: parsed.data.visible,
-      disposition: parsed.data.disposition ?? defaultDisposition,
-      accentColor: parsed.data.accentColor ?? defaultAccentColor,
-      notes: parsed.data.notes,
-      collectible: parsed.data.collectible,
-      rotation: parsed.data.rotation,
-      visionEnabled: parsed.data.visionEnabled,
-      visionAngle: parsed.data.visionAngle,
-      visionRange: parsed.data.visionRange,
-      visionColor:
-        parsed.data.visionColor ?? parsed.data.accentColor ?? defaultAccentColor,
-    });
+    const highestZIndex = existingTokens.reduce(
+      (highest, token) => Math.max(highest, token.zIndex),
+      0,
+    );
+    const result = await repositories.tabletop.createTokens(
+      Array.from({ length: parsed.data.quantity }, (_, index) => {
+        const slot = (existingTokens.length + index) % 20;
+        const copySuffix = ` ${String(index + 1).padStart(2, "0")}`;
+        return {
+          tableId: context.table.id,
+          mapId: context.table.activeMapId,
+          name:
+            parsed.data.quantity === 1
+              ? name
+              : `${name.slice(0, 80 - copySuffix.length).trimEnd()}${copySuffix}`,
+          kind: effectiveKind,
+          characterId: character?.id ?? null,
+          imageFileId: storedImage?.id ?? null,
+          x: 0.34 + (slot % 5) * 0.07,
+          y: 0.42 + Math.floor(slot / 5) * 0.08,
+          size: parsed.data.size,
+          zIndex: highestZIndex + index + 1,
+          visible: parsed.data.visible,
+          disposition: parsed.data.disposition ?? defaultDisposition,
+          accentColor: parsed.data.accentColor ?? defaultAccentColor,
+          notes: parsed.data.notes,
+          collectible: parsed.data.collectible,
+          rotation: parsed.data.rotation,
+          visionEnabled: parsed.data.visionEnabled,
+          visionAngle: parsed.data.visionAngle,
+          visionRange: parsed.data.visionRange,
+          visionColor:
+            parsed.data.visionColor ??
+            parsed.data.accentColor ??
+            defaultAccentColor,
+        };
+      }),
+    );
     return {
       ok: true,
-      message: `${name} foi adicionado à mesa.`,
+      message:
+        parsed.data.quantity === 1
+          ? `${name} foi adicionado à mesa.`
+          : `${parsed.data.quantity} cópias de ${name} foram adicionadas à mesa.`,
       revision: result.table.revision,
     };
   } catch (error) {
-    if (storedImage) await cleanupFailedTableImage(storedImage);
+    if (storedImage) {
+      const parsedTableId = idSchema.safeParse(formData.get("tableId"));
+      let imageStillInUse = true;
+      if (parsedTableId.success) {
+        try {
+          imageStillInUse = (
+            await repositories.tabletop.listTokens(parsedTableId.data)
+          ).some((token) => token.imageFileId === storedImage?.id);
+        } catch (lookupError) {
+          console.warn(
+            "Não foi possível confirmar se a imagem do lote ainda está em uso.",
+            lookupError,
+          );
+        }
+      }
+      if (!imageStillInUse) await cleanupFailedTableImage(storedImage);
+    }
     return commandError(error);
   }
 }
@@ -607,7 +645,14 @@ export async function deleteVirtualTableTokenAction(input: {
       parsed.data.tokenId,
     );
     if (!result) throw new TabletopActionError("Token não encontrado.");
-    await removeTabletopFiles([result.token.imageFileId]);
+    const imageStillInUse = result.token.imageFileId
+      ? (await repositories.tabletop.listTokens(context.table.id)).some(
+          (token) => token.imageFileId === result.token.imageFileId,
+        )
+      : false;
+    if (!imageStillInUse) {
+      await removeTabletopFiles([result.token.imageFileId]);
+    }
     return {
       ok: true,
       message: `${result.token.name} foi removido da mesa.`,
