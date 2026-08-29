@@ -247,6 +247,13 @@ export class LocalTabletopReadRepository implements TabletopReadRepository {
         mapImageUrl,
       },
       chapterProgress: {
+        previous: chapterProgress.previousChapter
+          ? {
+              id: chapterProgress.previousChapter.id,
+              title: chapterProgress.previousChapter.title,
+              order: chapterProgress.previousChapter.order,
+            }
+          : null,
         current: chapterProgress.currentChapter
           ? {
               id: chapterProgress.currentChapter.id,

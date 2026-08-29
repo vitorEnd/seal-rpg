@@ -106,6 +106,7 @@ export interface TabletopSnapshot {
     mapImageUrl: string | null;
   };
   chapterProgress: {
+    previous: TabletopChapterView | null;
     current: TabletopChapterView | null;
     next: TabletopChapterView | null;
     hasNext: boolean;

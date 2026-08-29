@@ -555,6 +555,7 @@ describe("repositório da mesa virtual", () => {
       },
     );
     expect(completedSnapshot?.chapterProgress).toMatchObject({
+      previous: { id: nextChapter.id },
       current: null,
       next: null,
       hasNext: false,
@@ -565,6 +566,140 @@ describe("repositório da mesa virtual", () => {
         to: null,
       },
     });
+  });
+
+  it("volta ao capítulo anterior e preserva o mapa e os tokens preparados", async () => {
+    const fixture = await createOpenTableFixture();
+    const [prologue] =
+      await fixture.repositories.campaignChapters.listByCampaign(
+        fixture.campaign.id,
+      );
+    if (!prologue) return;
+    const nextChapter = await fixture.repositories.campaignChapters.create({
+      campaignId: fixture.campaign.id,
+      title: "Missão Suicida",
+      slug: "missao-suicida-retorno",
+      shortDescription: "A equipe avança para a zona de inserção.",
+      description: "Capítulo usado para validar o retorno seguro do mestre.",
+      backgroundImageUrl: null,
+      backgroundImageStorageKey: null,
+      order: 2,
+      status: "published",
+    });
+    const maps = await fixture.repositories.tabletop.listMapsByCampaign(
+      fixture.campaign.id,
+    );
+    const insertionZone = maps.find((map) => map.order === 40);
+    expect(insertionZone).toBeTruthy();
+    if (!insertionZone) return;
+
+    await expect(
+      fixture.repositories.tabletop.rollbackChapter({
+        tableId: fixture.table.id,
+        currentChapterId: prologue.id,
+        previousChapterId: nextChapter.id,
+        requestedByUserId: fixture.gameMaster.id,
+        occurredAt: "2027-01-02T00:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({ field: "chapter" });
+
+    const advanced = await fixture.repositories.tabletop.advanceChapter({
+      tableId: fixture.table.id,
+      currentChapterId: prologue.id,
+      nextChapterId: nextChapter.id,
+      mapId: insertionZone.id,
+      requestedByUserId: fixture.gameMaster.id,
+      completedAt: "2027-01-02T00:05:00.000Z",
+    });
+    const npc = (
+      await fixture.repositories.tabletop.createToken({
+        tableId: fixture.table.id,
+        name: "Sentinela preparado",
+        kind: "npc",
+        characterId: null,
+        imageFileId: null,
+        x: 0.42,
+        y: 0.38,
+        size: 0.02,
+        zIndex: 1,
+        visible: true,
+      })
+    ).token;
+    const beforeRollback = await fixture.repositories.tabletop.findById(
+      fixture.table.id,
+    );
+
+    await expect(
+      fixture.repositories.tabletop.rollbackChapter({
+        tableId: fixture.table.id,
+        currentChapterId: nextChapter.id,
+        previousChapterId: prologue.id,
+        requestedByUserId: fixture.player.id,
+        occurredAt: "2027-01-02T00:09:00.000Z",
+      }),
+    ).rejects.toMatchObject({ field: "authorization" });
+
+    const occurredAt = "2027-01-02T00:10:00.000Z";
+    const rolledBack = await fixture.repositories.tabletop.rollbackChapter({
+      tableId: fixture.table.id,
+      currentChapterId: nextChapter.id,
+      previousChapterId: prologue.id,
+      requestedByUserId: fixture.gameMaster.id,
+      occurredAt,
+    });
+    expect(rolledBack).toMatchObject({
+      restoredChapter: { id: prologue.id, completedAt: null },
+      formerCurrentChapter: { id: nextChapter.id, completedAt: null },
+      table: {
+        activeMapId: insertionZone.id,
+        revision: (beforeRollback?.revision ?? 0) + 1,
+        lastChapterTransition: {
+          fromChapterId: nextChapter.id,
+          toChapterId: prologue.id,
+          mapId: insertionZone.id,
+          occurredAt,
+        },
+      },
+    });
+    expect(advanced?.table.activeMapId).toBe(insertionZone.id);
+    expect(
+      (await fixture.repositories.tabletop.findTokenById(npc.id))?.mapId,
+    ).toBe(insertionZone.id);
+
+    const reader = new LocalTabletopReadRepository(
+      fixture.database,
+      new LocalFileStorageProvider({
+        rootPath: path.join(fixture.directory, "uploads"),
+      }),
+    );
+    const masterSnapshot = await reader.findOpenSnapshotByCampaignSlug(
+      fixture.campaign.slug,
+      { includeHiddenTokens: true, includeLockedChapterDetails: true },
+    );
+    const playerSnapshot = await reader.findOpenSnapshotByCampaignSlug(
+      fixture.campaign.slug,
+      { includeHiddenTokens: false, includeLockedChapterDetails: false },
+    );
+    expect(masterSnapshot?.chapterProgress).toMatchObject({
+      previous: null,
+      current: { id: prologue.id },
+      next: { id: nextChapter.id },
+      completedCount: 0,
+      transition: {
+        from: { id: nextChapter.id },
+        to: { id: prologue.id },
+      },
+    });
+    expect(playerSnapshot?.chapterProgress).toMatchObject({
+      previous: null,
+      current: { id: prologue.id },
+      next: null,
+      hasNext: true,
+      completedCount: 0,
+    });
+    expect(playerSnapshot?.tokens).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: npc.id })]),
+    );
   });
 
   it("mantém uma biblioteca de mapas por campanha e troca camadas sem perder uploads", async () => {

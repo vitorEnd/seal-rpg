@@ -213,6 +213,14 @@ export interface AdvanceVirtualTableChapterInput {
   completedAt: string;
 }
 
+export interface RollbackVirtualTableChapterInput {
+  tableId: EntityId;
+  currentChapterId: EntityId | null;
+  previousChapterId: EntityId;
+  requestedByUserId: EntityId;
+  occurredAt: string;
+}
+
 export interface TabletopRepository {
   findOpenByCampaign(campaignId: EntityId): Promise<VirtualTable | null>;
   findBySession(sessionId: EntityId): Promise<VirtualTable | null>;
@@ -236,6 +244,13 @@ export interface TabletopRepository {
     completedChapter: CampaignChapter;
     nextChapter: CampaignChapter | null;
     map: VirtualTableMap | null;
+  } | null>;
+  rollbackChapter(
+    input: RollbackVirtualTableChapterInput,
+  ): Promise<{
+    table: VirtualTable;
+    restoredChapter: CampaignChapter;
+    formerCurrentChapter: CampaignChapter | null;
   } | null>;
   deleteMap(
     mapId: EntityId,

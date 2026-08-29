@@ -53,6 +53,7 @@ import type {
   MissionParticipantRepository,
   MissionRepository,
   OpenVirtualTableInput,
+  RollbackVirtualTableChapterInput,
   RepositoryRegistry,
   SessionParticipantRepository,
   TeamMemberRepository,
@@ -1664,6 +1665,119 @@ class LocalTabletopRepository implements TabletopRepository {
         completedChapter,
         nextChapter,
         map,
+      });
+    });
+  }
+
+  async rollbackChapter(
+    input: RollbackVirtualTableChapterInput,
+  ): Promise<{
+    table: VirtualTable;
+    restoredChapter: CampaignChapter;
+    formerCurrentChapter: CampaignChapter | null;
+  } | null> {
+    if (Number.isNaN(Date.parse(input.occurredAt))) {
+      throw new RepositoryConflictError(
+        "occurredAt",
+        "A data da mudança de capítulo é inválida.",
+      );
+    }
+
+    return this.database.mutate((database) => {
+      const tableIndex = database.virtualTables.findIndex(
+        (table) => table.id === input.tableId && table.status === "open",
+      );
+      if (tableIndex === -1) return null;
+
+      const currentTable = database.virtualTables[tableIndex];
+      const campaign = database.campaigns.find(
+        (candidate) => candidate.id === currentTable.campaignId,
+      );
+      const requester = database.users.find(
+        (candidate) =>
+          candidate.id === input.requestedByUserId &&
+          candidate.status === "active",
+      );
+      const requesterMembership = database.campaignMembers.find(
+        (membership) =>
+          membership.campaignId === currentTable.campaignId &&
+          membership.userId === input.requestedByUserId,
+      );
+      if (
+        !campaign ||
+        !requester ||
+        !canManageCampaign(requester, campaign, requesterMembership ?? null)
+      ) {
+        throw new RepositoryConflictError(
+          "authorization",
+          "Somente o mestre pode voltar o capítulo.",
+        );
+      }
+
+      const publishedChapters = database.campaignChapters
+        .filter(
+          (chapter) =>
+            chapter.campaignId === currentTable.campaignId &&
+            chapter.status === "published",
+        )
+        .slice()
+        .sort(compareCampaignChapters);
+      const firstIncompleteIndex = publishedChapters.findIndex(
+        (chapter) => chapter.completedAt === null,
+      );
+      const formerCurrentChapter =
+        firstIncompleteIndex === -1
+          ? null
+          : publishedChapters[firstIncompleteIndex] ?? null;
+      if ((formerCurrentChapter?.id ?? null) !== input.currentChapterId) {
+        throw new RepositoryConflictError(
+          "chapter",
+          "O capítulo da mesa mudou. Atualize a página antes de voltar.",
+        );
+      }
+
+      const previousIndex =
+        firstIncompleteIndex === -1
+          ? publishedChapters.length - 1
+          : firstIncompleteIndex - 1;
+      const previousChapter = publishedChapters[previousIndex] ?? null;
+      if (!previousChapter || previousChapter.completedAt === null) {
+        throw new RepositoryConflictError(
+          "chapter",
+          "Não existe um capítulo concluído para restaurar.",
+        );
+      }
+      if (previousChapter.id !== input.previousChapterId) {
+        throw new RepositoryConflictError(
+          "chapter",
+          "A ordem dos capítulos mudou. Atualize a mesa antes de voltar.",
+        );
+      }
+
+      const storedChapterIndex = database.campaignChapters.findIndex(
+        (chapter) => chapter.id === previousChapter.id,
+      );
+      const restoredChapter: CampaignChapter = {
+        ...previousChapter,
+        completedAt: null,
+        updatedAt: input.occurredAt,
+      };
+      database.campaignChapters[storedChapterIndex] = restoredChapter;
+
+      const table = reviseVirtualTable(database, tableIndex, {
+        lastChapterTransition: {
+          id: randomUUID(),
+          fromChapterId: formerCurrentChapter?.id ?? previousChapter.id,
+          toChapterId: previousChapter.id,
+          mapId: currentTable.activeMapId,
+          occurredAt: input.occurredAt,
+        },
+      });
+
+      return structuredClone({
+        table,
+        restoredChapter,
+        formerCurrentChapter,
       });
     });
   }

@@ -1427,6 +1427,14 @@ export type Database = {
         Returns: boolean
       }
       close_virtual_table: { Args: { target_table_id: string }; Returns: Json }
+      rollback_virtual_table_chapter: {
+        Args: {
+          expected_current_chapter_id: string | null
+          expected_previous_chapter_id: string
+          target_table_id: string
+        }
+        Returns: Json
+      }
       delete_virtual_table_map: {
         Args: { target_map_id: string }
         Returns: Json
@@ -1716,4 +1724,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

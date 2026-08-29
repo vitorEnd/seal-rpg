@@ -319,6 +319,9 @@ export class SupabaseTabletopReadRepository
     const timeline = timelineResult.data ?? [];
     const currentRow = timeline.find((chapter) => chapter.state === "available");
     const nextRow = timeline.find((chapter) => chapter.state === "locked");
+    const previousRow = timeline
+      .filter((chapter) => chapter.state === "completed")
+      .at(-1);
     const chaptersById = new Map(
       timeline
         .filter((chapter) => chapter.chapter_id)
@@ -335,10 +338,12 @@ export class SupabaseTabletopReadRepository
       ? maps.find((map) => map.id === storedTransition.map_id) ?? null
       : null;
     const transition =
-      storedTransition && fromRow
+      storedTransition && (fromRow || toRow)
         ? {
             id: storedTransition.id,
-            from: timelineChapter(fromRow)!,
+            // Ao voltar, o capítulo que ficou bloqueado é redigido para jogadores.
+            // O destino continua visível e mantém a animação sincronizada para todos.
+            from: timelineChapter(fromRow ?? toRow)!,
             to: storedTransition.to_chapter_id
               ? timelineChapter(toRow)
               : null,
@@ -381,6 +386,7 @@ export class SupabaseTabletopReadRepository
             : null),
       },
       chapterProgress: {
+        previous: timelineChapter(previousRow),
         current: timelineChapter(currentRow),
         next: options.includeLockedChapterDetails
           ? timelineChapter(nextRow)

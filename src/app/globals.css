@@ -739,6 +739,9 @@ a, button, input, textarea, select, summary { outline-color: var(--signal); }
 .vtt-chapter-control > button { display: flex; width: 100%; min-height: 2.35rem; margin-top: .65rem; padding: .5rem .6rem; align-items: center; justify-content: space-between; border: 1px solid color-mix(in srgb, var(--campaign-primary) 38%, transparent); background: color-mix(in srgb, var(--campaign-primary) 12%, #090c0d); color: #dce1dc; cursor: pointer; font-family: "Cascadia Code", monospace; font-size: .5rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .vtt-chapter-control > button:hover:not(:disabled) { background: color-mix(in srgb, var(--campaign-primary) 20%, #090c0d); }
 .vtt-chapter-control > button b { color: var(--campaign-primary); font-size: .9rem; }
+.vtt-chapter-control > .vtt-chapter-back { justify-content: flex-start; gap: .45rem; border-color: rgba(213,95,74,.34); background: rgba(213,95,74,.07); color: #d9b0a8; }
+.vtt-chapter-control > .vtt-chapter-back:hover:not(:disabled) { border-color: rgba(213,95,74,.58); background: rgba(213,95,74,.13); }
+.vtt-chapter-control > .vtt-chapter-back b { color: #e07b67; }
 .vtt-chapter-control > small { display: block; margin-top: .55rem; color: #6b7678; font-size: .51rem; line-height: 1.45; }
 .vtt-map-group-heading { display: flex; margin-bottom: .38rem; align-items: center; justify-content: space-between; gap: .6rem; }
 .vtt-map-group-heading span { overflow: hidden; color: #8f999b; font-family: "Cascadia Code", monospace; font-size: .51rem; font-weight: 850; letter-spacing: .1em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }

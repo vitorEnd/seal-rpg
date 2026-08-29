@@ -12,6 +12,7 @@ export interface CampaignChapterProgressEntry {
 
 export interface CampaignChapterProgression {
   entries: CampaignChapterProgressEntry[];
+  previousChapter: CampaignChapter | null;
   currentChapter: CampaignChapter | null;
   nextChapter: CampaignChapter | null;
   completedCount: number;
@@ -52,6 +53,10 @@ export function resolveCampaignChapterProgression(
 
   return {
     entries,
+    previousChapter:
+      currentIndex === -1
+        ? published[published.length - 1] ?? null
+        : published[currentIndex - 1] ?? null,
     currentChapter: currentIndex === -1 ? null : published[currentIndex],
     nextChapter:
       currentIndex === -1 ? null : published[currentIndex + 1] ?? null,

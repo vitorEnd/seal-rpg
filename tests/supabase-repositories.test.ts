@@ -171,4 +171,74 @@ describe("repositórios Supabase", () => {
     expect(result.tokens).toHaveLength(5);
     expect(result.table.revision).toBe(6);
   });
+
+  it("chama a RPC atômica para voltar ao capítulo anterior", async () => {
+    const tableId = "30000000-0000-4000-8000-000000000001";
+    const campaignId = "10000000-0000-4000-8000-000000000001";
+    const sessionId = "40000000-0000-4000-8000-000000000001";
+    const currentChapterId = "11000000-0000-4000-8000-000000000002";
+    const previousChapterId = "11000000-0000-4000-8000-000000000001";
+    const userId = "b504e622-cce8-459b-a61e-dda7569a3f5b";
+    const timestamp = "2026-08-28T12:00:00.000Z";
+    const chapterRow = (id: string, title: string, order: number) => ({
+      id,
+      campaign_id: campaignId,
+      title,
+      slug: title.toLowerCase().replaceAll(" ", "-"),
+      short_description: "Resumo",
+      description: "Descrição",
+      background_image_url: null,
+      background_image_storage_key: null,
+      sort_order: order,
+      status: "published",
+      completed_at: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
+    const rpc = vi.fn(async () => ({
+      data: {
+        table: {
+          id: tableId,
+          campaign_id: campaignId,
+          session_id: sessionId,
+          status: "open",
+          map_file_id: null,
+          active_map_id: "12000000-0000-4000-8000-000000000006",
+          revision: 9,
+          opened_by_user_id: userId,
+          opened_at: timestamp,
+          closed_at: null,
+          created_at: timestamp,
+          updated_at: timestamp,
+        },
+        restoredChapter: chapterRow(previousChapterId, "O Prólogo", 1),
+        formerCurrentChapter: chapterRow(
+          currentChapterId,
+          "Missão Suicida",
+          2,
+        ),
+      },
+      error: null,
+    }));
+    const client = { rpc } as unknown as SealRpgSupabaseClient;
+
+    const result = await new SupabaseTabletopRepository(client).rollbackChapter({
+      tableId,
+      currentChapterId,
+      previousChapterId,
+      requestedByUserId: userId,
+      occurredAt: timestamp,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("rollback_virtual_table_chapter", {
+      target_table_id: tableId,
+      expected_current_chapter_id: currentChapterId,
+      expected_previous_chapter_id: previousChapterId,
+    });
+    expect(result).toMatchObject({
+      table: { id: tableId, revision: 9 },
+      restoredChapter: { id: previousChapterId, completedAt: null },
+      formerCurrentChapter: { id: currentChapterId },
+    });
+  });
 });

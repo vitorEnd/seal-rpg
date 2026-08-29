@@ -27,6 +27,7 @@ import {
   deleteVirtualTableTokenAction,
   moveVirtualTableTokenAction,
   resetVirtualTableMapAction,
+  rollbackVirtualTableChapterAction,
   rollVirtualTableDiceAction,
   toggleVirtualTableTokenAction,
   updateCharacterLoadoutAction,
@@ -741,6 +742,7 @@ export function VirtualTable({
   );
   const currentChapter = snapshot.chapterProgress.current;
   const nextChapter = snapshot.chapterProgress.next;
+  const previousChapter = snapshot.chapterProgress.previous;
   const activeMapIndex = snapshot.maps.findIndex(
     (map) => map.id === snapshot.table.activeMapId,
   );
@@ -914,27 +916,61 @@ export function VirtualTable({
             </header>
             {mapLibraryOpen ? (
               <div className="vtt-map-library-body">
-                {canManage && snapshot.chapterProgress.current ? (
+                {canManage && (currentChapter || previousChapter) ? (
                   <section className="vtt-chapter-control">
                     <p>Progressão narrativa</p>
                     <strong>
-                      {snapshot.chapterProgress.current.order.toString().padStart(2, "0")} ·{" "}
-                      {snapshot.chapterProgress.current.title}
+                      {currentChapter
+                        ? `${currentChapter.order.toString().padStart(2, "0")} · ${currentChapter.title}`
+                        : "Operação concluída"}
                     </strong>
                     <span>
                       {snapshot.chapterProgress.completedCount}/{snapshot.chapterProgress.total} concluídos
                     </span>
-                    <button
-                      type="button"
-                      disabled={pendingAction === "advance-chapter"}
-                      onClick={() => setModal("chapter")}
-                    >
-                      {snapshot.chapterProgress.next
-                        ? "Avançar capítulo"
-                        : "Concluir capítulo"}{" "}
-                      <b>→</b>
-                    </button>
-                    {!snapshot.chapterProgress.next ? (
+                    {previousChapter ? (
+                      <button
+                        type="button"
+                        className="vtt-chapter-back"
+                        disabled={
+                          pendingAction === "rollback-chapter" ||
+                          pendingAction === "advance-chapter"
+                        }
+                        onClick={() => {
+                          const origin = currentChapter?.title ?? "a conclusão da operação";
+                          if (
+                            window.confirm(
+                              `Voltar de ${origin} para ${previousChapter.title}? O capítulo atual e os posteriores serão bloqueados novamente. O mapa atual, tokens e NPCs serão mantidos.`,
+                            )
+                          ) {
+                            void executeCommand(
+                              "rollback-chapter",
+                              rollbackVirtualTableChapterAction({
+                                campaignSlug: snapshot.campaign.slug,
+                                tableId: snapshot.table.id,
+                                currentChapterId: currentChapter?.id ?? null,
+                                previousChapterId: previousChapter.id,
+                              }),
+                            );
+                          }
+                        }}
+                      >
+                        <b>←</b> Voltar para {previousChapter.title}
+                      </button>
+                    ) : null}
+                    {currentChapter ? (
+                      <button
+                        type="button"
+                        disabled={
+                          pendingAction === "advance-chapter" ||
+                          pendingAction === "rollback-chapter"
+                        }
+                        onClick={() => setModal("chapter")}
+                      >
+                        {nextChapter ? "Avançar capítulo" : "Concluir capítulo"}{" "}
+                        <b>→</b>
+                      </button>
+                    ) : null}
+                    {currentChapter && !nextChapter ? (
                       <small>Este é o último capítulo publicado da operação.</small>
                     ) : null}
                   </section>

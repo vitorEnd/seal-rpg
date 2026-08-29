@@ -56,6 +56,12 @@ const advanceChapterSchema = z.object({
   nextChapterId: idSchema.nullable(),
   mapId: idSchema.nullable(),
 });
+const rollbackChapterSchema = z.object({
+  campaignSlug: slugSchema,
+  tableId: idSchema,
+  currentChapterId: idSchema.nullable(),
+  previousChapterId: idSchema,
+});
 const updateTokenSchema = tokenCommandSchema.extend({
   mapId: idSchema.optional(),
   name: z.string().trim().min(2).max(80),
@@ -810,6 +816,45 @@ export async function advanceVirtualTableChapterAction(input: {
         result.nextChapter && result.map
           ? `${result.completedChapter.title} concluído. ${result.nextChapter.title} começou em ${result.map.name}.`
           : `${result.completedChapter.title} concluído. Todos os capítulos publicados foram finalizados.`,
+      revision: result.table.revision,
+    };
+  } catch (error) {
+    return commandError(error);
+  }
+}
+
+export async function rollbackVirtualTableChapterAction(input: {
+  campaignSlug: string;
+  tableId: string;
+  currentChapterId: string | null;
+  previousChapterId: string;
+}): Promise<TabletopCommandResult> {
+  try {
+    const parsed = rollbackChapterSchema.safeParse(input);
+    if (!parsed.success) {
+      throw new TabletopActionError("Capítulo inválido.");
+    }
+    const context = await openTableContext(
+      parsed.data.campaignSlug,
+      parsed.data.tableId,
+    );
+    requireGameMaster(context.canManage);
+    const result = await repositories.tabletop.rollbackChapter({
+      tableId: context.table.id,
+      currentChapterId: parsed.data.currentChapterId,
+      previousChapterId: parsed.data.previousChapterId,
+      requestedByUserId: context.authSession.user.id,
+      occurredAt: new Date().toISOString(),
+    });
+    if (!result) {
+      throw new TabletopActionError("A mesa não está mais aberta.");
+    }
+    refreshTablePages(context.campaign);
+    return {
+      ok: true,
+      message: result.formerCurrentChapter
+        ? `A operação voltou de ${result.formerCurrentChapter.title} para ${result.restoredChapter.title}. Os capítulos posteriores foram bloqueados novamente.`
+        : `${result.restoredChapter.title} foi reaberto. Os capítulos posteriores foram bloqueados novamente.`,
       revision: result.table.revision,
     };
   } catch (error) {

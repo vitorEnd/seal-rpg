@@ -14,6 +14,7 @@ import {
   type AdvanceVirtualTableChapterInput,
   type CreateEntityInput,
   type OpenVirtualTableInput,
+  type RollbackVirtualTableChapterInput,
   type TabletopRepository,
 } from "@/domain/repositories";
 import type { Database } from "@/infrastructure/supabase/database.types";
@@ -33,6 +34,7 @@ const DATABASE_ERROR_MESSAGES: Record<string, string> = {
   TABLE_ACCESS_DENIED: "Você não tem acesso a esta mesa.",
   TABLE_MANAGEMENT_DENIED: "Somente o mestre pode alterar a mesa.",
   CHAPTER_ADVANCE_DENIED: "Somente o mestre pode avançar o capítulo.",
+  CHAPTER_ROLLBACK_DENIED: "Somente o mestre pode voltar o capítulo.",
   TOKEN_CONTROL_DENIED: "Você não controla este token.",
   TABLE_NOT_FOUND: "Mesa não encontrada.",
   TABLE_NOT_OPEN: "Esta mesa não está mais aberta.",
@@ -49,8 +51,12 @@ const DATABASE_ERROR_MESSAGES: Record<string, string> = {
   INVALID_TOKEN_POSITION: "A posição do token é inválida.",
   INVALID_DICE_EXPRESSION: "Use comandos como 1d20, 2d6+3 ou 1d100.",
   NO_CURRENT_CHAPTER: "Todos os capítulos publicados já foram concluídos.",
+  NO_PREVIOUS_COMPLETED_CHAPTER:
+    "Não existe um capítulo concluído para restaurar.",
   CURRENT_CHAPTER_CHANGED:
-    "O capítulo da mesa mudou. Atualize a página antes de avançar.",
+    "O capítulo da mesa mudou. Atualize a página antes de continuar.",
+  PREVIOUS_CHAPTER_CHANGED:
+    "A ordem dos capítulos mudou. Atualize a mesa antes de voltar.",
   NEXT_CHAPTER_CHANGED:
     "A ordem dos capítulos mudou. Atualize a mesa antes de concluir.",
   NEXT_CHAPTER_MAP_REQUIRED:
@@ -344,6 +350,47 @@ export class SupabaseTabletopRepository implements TabletopRepository {
       map: response.map
         ? mapVirtualTableMapRow(
             rowFromJson<"virtual_table_maps">(response.map, "mapa"),
+          )
+        : null,
+    };
+  }
+
+  async rollbackChapter(
+    input: RollbackVirtualTableChapterInput,
+  ): Promise<{
+    table: VirtualTable;
+    restoredChapter: CampaignChapter;
+    formerCurrentChapter: CampaignChapter | null;
+  } | null> {
+    const { data, error } = await this.client.rpc(
+      "rollback_virtual_table_chapter",
+      {
+        target_table_id: input.tableId,
+        expected_current_chapter_id: input.currentChapterId,
+        expected_previous_chapter_id: input.previousChapterId,
+      },
+    );
+    if (error) {
+      if (error.message.includes("TABLE_NOT_OPEN")) return null;
+      databaseConflict(error, "Não foi possível voltar o capítulo.");
+    }
+    const response = asJsonRecord(data, "resposta de retorno de capítulo");
+    return {
+      table: mapVirtualTableRow(
+        rowFromJson<"virtual_tables">(response.table, "mesa"),
+      ),
+      restoredChapter: mapCampaignChapterRow(
+        rowFromJson<"campaign_chapters">(
+          response.restoredChapter,
+          "capítulo restaurado",
+        ),
+      ),
+      formerCurrentChapter: response.formerCurrentChapter
+        ? mapCampaignChapterRow(
+            rowFromJson<"campaign_chapters">(
+              response.formerCurrentChapter,
+              "capítulo anterior da mesa",
+            ),
           )
         : null,
     };
