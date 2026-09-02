@@ -418,10 +418,7 @@ export async function createVirtualTableTokenAction(
         notes: formData.get("notes") ?? "",
         collectible: formData.get("collectible") === "on",
         rotation: formData.get("rotation") || 0,
-        visionEnabled:
-          formData.has("visionEnabled")
-            ? formData.get("visionEnabled") === "on"
-            : formData.get("kind") !== "object",
+        visionEnabled: formData.getAll("visionEnabled").includes("on"),
         visionAngle: formData.get("visionAngle") || 70,
         visionRange: formData.get("visionRange") || 0.22,
         visionColor: formData.get("visionColor") || undefined,
@@ -437,11 +434,16 @@ export async function createVirtualTableTokenAction(
     );
     requireGameMaster(context.canManage);
 
-    const character = parsed.data.characterId
-      ? await repositories.characters.findById(parsed.data.characterId)
+    // A ficha só tem significado para tokens do tipo personagem. Isso evita
+    // que um valor antigo do formulário transforme silenciosamente um NPC em
+    // personagem e colida com o token que aquela ficha já possui.
+    const characterId =
+      parsed.data.kind === "character" ? parsed.data.characterId : "";
+    const character = characterId
+      ? await repositories.characters.findById(characterId)
       : null;
     if (
-      parsed.data.characterId &&
+      characterId &&
       (!character || character.campaignId !== context.campaign.id)
     ) {
       throw new TabletopActionError("Personagem não encontrado nesta campanha.");
@@ -457,6 +459,21 @@ export async function createVirtualTableTokenAction(
     const name = parsed.data.name || character?.name || "Token sem nome";
     if (name.length < 2) throw new TabletopActionError("Informe o nome do token.");
 
+    // O banco garante uma única miniatura por ficha em cada mesa. Antecipar a
+    // verificação produz uma explicação útil e evita enviar uma imagem que
+    // seria descartada depois pela restrição única.
+    const existingTokens = await repositories.tabletop.listTokens(context.table.id);
+    const existingCharacterToken = character
+      ? existingTokens.find((token) => token.characterId === character.id)
+      : null;
+    if (existingCharacterToken) {
+      throw new TabletopActionError(
+        existingCharacterToken.mapId === context.table.activeMapId
+          ? `${character!.name} já possui um token neste mapa.`
+          : `${character!.name} já possui um token em outro mapa. Abra esse mapa e transfira o token existente em vez de duplicá-lo.`,
+      );
+    }
+
     if (imageFile) {
       storedImage = await storeTableImage({
         file: imageFile,
@@ -467,8 +484,7 @@ export async function createVirtualTableTokenAction(
         category: "image",
       });
     }
-    const existingTokens = await repositories.tabletop.listTokens(context.table.id);
-    const effectiveKind = character ? "character" : parsed.data.kind;
+    const effectiveKind = parsed.data.kind;
     const defaultDisposition =
       effectiveKind === "character"
         ? "player"

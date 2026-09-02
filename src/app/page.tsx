@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CampaignCard } from "@/components/campaigns/campaign-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SiteHeader } from "@/components/site/site-header";
+import { usesSgioRules } from "@/domain/campaign-rules";
 import { getCurrentSession } from "@/lib/auth/current-user";
 import { getCampaignDirectory } from "@/lib/campaign-data";
 
@@ -19,9 +20,10 @@ export default async function Home() {
   const nameParts = featured?.name.split(/\s+/) ?? [];
   const featuredImageUrl =
     featured?.backgroundImageUrl ?? featured?.coverImageUrl ?? null;
+  const featuredIsSgio = featured ? usesSgioRules(featured.slug) : false;
 
   return (
-    <main className="home-page">
+    <main className={`home-page ${featuredIsSgio ? "home-page--sgio" : ""}`}>
       <section className="home-hero">
         <div className="home-hero-media" aria-hidden="true">
           {featuredImageUrl ? (
@@ -40,12 +42,20 @@ export default async function Home() {
         <SiteHeader user={session?.user ?? null} active="home" overlay />
 
         <div className="home-hero-content">
-          <p className="home-eyebrow">Campanha privada · arquivo operacional</p>
+          <p className="home-eyebrow">
+            {featuredIsSgio
+              ? "Canal protegido · intervenção oculta"
+              : "Campanha privada · arquivo operacional"}
+          </p>
           {featured ? (
             <>
               <h1>
-                <span>{nameParts[0]}</span>
-                <strong>{nameParts.slice(1).join(" ")}</strong>
+                <span>{featuredIsSgio ? "S.G.I.O." : nameParts[0]}</span>
+                <strong>
+                  {featuredIsSgio
+                    ? "Os Soldados Fantasmas"
+                    : nameParts.slice(1).join(" ")}
+                </strong>
               </h1>
               <p className="home-lead">{featured.shortDescription}</p>
               <div className="home-actions">

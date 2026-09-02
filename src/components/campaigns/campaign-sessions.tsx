@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { CampaignExperienceView } from "@/application/campaigns/campaign-read-repository";
 import { formatDateTime } from "@/components/campaigns/campaign-presenters";
 import { resolveCampaignChapterProgression } from "@/domain/chapter-progression";
+import { usesSgioRules } from "@/domain/campaign-rules";
 import type { CampaignSession, User } from "@/domain/entities";
 import { canManageCampaign } from "@/domain/permissions";
 
@@ -62,6 +63,9 @@ export function CampaignSessions({
     experience.campaign.backgroundImageUrl ??
     experience.campaign.coverImageUrl;
   const latestCompleted = completed.at(-1) ?? null;
+  const archiveCode = usesSgioRules(experience.campaign.slug)
+    ? "S.G.I.O // REGISTRO FANTASMA"
+    : "OP.NEP // REGISTRO VISUAL";
 
   return (
     <section
@@ -100,7 +104,7 @@ export function CampaignSessions({
           )}
           <div className={styles.visualShade} aria-hidden="true" />
           <span className={styles.visualCoordinates} aria-hidden="true">
-            OP.NEP // REGISTRO VISUAL
+            {archiveCode}
           </span>
         </div>
         <div className={styles.visualCopy}>

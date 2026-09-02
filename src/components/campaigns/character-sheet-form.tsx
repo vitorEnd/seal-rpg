@@ -22,12 +22,12 @@ import type {
 } from "@/domain/entities";
 import {
   CHARACTER_ATTRIBUTE_BUDGET,
-  CHARACTER_ATTRIBUTE_DEFINITIONS,
   CHARACTER_ATTRIBUTE_KEYS,
   CHARACTER_ATTRIBUTE_MAX,
   EMPTY_CHARACTER_ATTRIBUTES,
   calculateEffectiveAttributes,
   characterAttributeTotal,
+  getCharacterAttributeDefinitions,
   type CharacterAttributeKey,
   type CharacterAttributes,
 } from "@/domain/character-attributes";
@@ -80,6 +80,7 @@ export function CharacterSheetForm({
   );
   const classBonuses =
     selectedClass?.attributeBonuses ?? EMPTY_CHARACTER_ATTRIBUTES;
+  const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
   const effectiveAttributes = calculateEffectiveAttributes(
     attributes,
     classBonuses,
@@ -87,7 +88,7 @@ export function CharacterSheetForm({
   const allocatedPoints = characterAttributeTotal(attributes);
   const remainingPoints = CHARACTER_ATTRIBUTE_BUDGET - allocatedPoints;
   const distributionComplete = remainingPoints === 0;
-  const selectedBonuses = CHARACTER_ATTRIBUTE_DEFINITIONS.filter(
+  const selectedBonuses = attributeDefinitions.filter(
     ({ key }) => classBonuses[key] > 0,
   );
 
@@ -298,7 +299,7 @@ export function CharacterSheetForm({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {CHARACTER_ATTRIBUTE_DEFINITIONS.map(({ key, label, description }) => {
+          {attributeDefinitions.map(({ key, label, description }) => {
             const base = attributes[key];
             const bonus = classBonuses[key];
             const inputId = `${sheet?.id ?? "new"}-attribute-${key}`;

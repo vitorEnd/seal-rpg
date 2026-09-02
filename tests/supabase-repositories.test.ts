@@ -172,6 +172,78 @@ describe("repositórios Supabase", () => {
     expect(result.table.revision).toBe(6);
   });
 
+  it("traduz o conflito de personagem duplicado em uma mensagem amigável", async () => {
+    const tableId = "30000000-0000-4000-8000-000000000001";
+    const campaignId = "10000000-0000-4000-8000-000000000001";
+    const sessionId = "40000000-0000-4000-8000-000000000001";
+    const mapId = "12000000-0000-4000-8000-000000000001";
+    const characterId = "50000000-0000-4000-8000-000000000001";
+    const creatorId = "b504e622-cce8-459b-a61e-dda7569a3f5b";
+    const timestamp = "2026-08-28T12:00:00.000Z";
+    const maybeSingle = vi.fn(async () => ({
+      data: {
+        id: tableId,
+        campaign_id: campaignId,
+        session_id: sessionId,
+        status: "open",
+        map_file_id: null,
+        active_map_id: mapId,
+        revision: 6,
+        opened_by_user_id: creatorId,
+        opened_at: timestamp,
+        closed_at: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+      },
+      error: null,
+    }));
+    const tableSelect = vi.fn(() => ({
+      eq: vi.fn(() => ({ maybeSingle })),
+    }));
+    const tokenSelect = vi.fn(async () => ({
+      data: null,
+      error: {
+        code: "23505",
+        message:
+          'duplicate key value violates unique constraint "virtual_table_tokens_character_once_idx"',
+        details: `Key (table_id, character_id)=(${tableId}, ${characterId}) already exists.`,
+      },
+    }));
+    const insert = vi.fn(() => ({ select: tokenSelect }));
+    const client = {
+      from: vi.fn((table: string) =>
+        table === "virtual_tables" ? { select: tableSelect } : { insert },
+      ),
+    } as unknown as SealRpgSupabaseClient;
+
+    await expect(
+      new SupabaseTabletopRepository(client).createToken({
+        tableId,
+        mapId,
+        name: "Operador duplicado",
+        kind: "character",
+        characterId,
+        imageFileId: null,
+        x: 0.4,
+        y: 0.45,
+        size: 0.04,
+        zIndex: 2,
+        visible: true,
+        disposition: "player",
+        accentColor: "#38bdf8",
+        notes: "",
+        collectible: false,
+        rotation: 0,
+        visionEnabled: true,
+        visionAngle: 70,
+        visionRange: 0.18,
+        visionColor: "#38bdf8",
+      }),
+    ).rejects.toMatchObject({
+      message: "Este personagem já possui um token nesta mesa.",
+    });
+  });
+
   it("chama a RPC atômica para voltar ao capítulo anterior", async () => {
     const tableId = "30000000-0000-4000-8000-000000000001";
     const campaignId = "10000000-0000-4000-8000-000000000001";

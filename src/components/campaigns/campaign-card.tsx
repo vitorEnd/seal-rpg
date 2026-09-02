@@ -7,6 +7,7 @@ import {
   campaignStatusLabel,
   campaignThemeStyle,
 } from "@/components/campaigns/campaign-presenters";
+import { usesSgioRules } from "@/domain/campaign-rules";
 
 export function CampaignCard({
   campaign,
@@ -18,10 +19,12 @@ export function CampaignCard({
   ctaLabel?: string;
 }) {
   const imageUrl = campaign.coverImageUrl ?? campaign.backgroundImageUrl;
+  const isSgio = usesSgioRules(campaign.slug);
   return (
     <Link
       href={`/campaigns/${encodeURIComponent(campaign.slug)}`}
-      className={`archive-card ${featured ? "featured" : ""}`}
+      className={`archive-card ${isSgio ? "archive-card--sgio" : ""} ${featured ? "featured" : ""}`}
+      data-campaign-theme={isSgio ? "sgio" : "neptune"}
       style={campaignThemeStyle(campaign.primaryColor, campaign.secondaryColor)}
     >
       <article>

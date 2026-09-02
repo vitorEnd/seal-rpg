@@ -64,6 +64,8 @@ const DATABASE_ERROR_MESSAGES: Record<string, string> = {
   FINAL_CHAPTER_DOES_NOT_ACCEPT_MAP:
     "O último capítulo não precisa de um novo mapa.",
   TABLE_STATE_CHANGED: "A mesa mudou. Atualize a página e tente novamente.",
+  virtual_table_tokens_character_once_idx:
+    "Este personagem já possui um token nesta mesa.",
 };
 
 export function asJsonRecord(value: unknown, label = "resposta"): JsonRecord {

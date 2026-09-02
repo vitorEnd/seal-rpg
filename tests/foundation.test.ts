@@ -8,7 +8,9 @@ import { safeReturnTo } from "@/application/auth/safe-return-to";
 import { dateToIso, localDateTimeToIso } from "@/application/forms/form-values";
 import {
   calculateEffectiveAttributes,
+  CHARACTER_ATTRIBUTE_KEYS,
   EMPTY_CHARACTER_ATTRIBUTES,
+  getCharacterAttributeDefinitions,
   isValidCharacterAttributes,
   LEGACY_CHARACTER_ATTRIBUTES,
 } from "@/domain/character-attributes";
@@ -74,16 +76,88 @@ afterEach(async () => {
   );
 });
 
+describe("atributos por campanha", () => {
+  it("mantém os rótulos táticos de Neptune e de campanhas sem regras próprias", () => {
+    const expectedLabels = [
+      "Físico",
+      "Agilidade",
+      "Pontaria",
+      "Percepção",
+      "Técnica",
+      "Controle",
+    ];
+
+    expect(
+      getCharacterAttributeDefinitions("operacao-neptune").map(
+        ({ label }) => label,
+      ),
+    ).toEqual(expectedLabels);
+    expect(
+      getCharacterAttributeDefinitions("campanha-sem-ruleset").map(
+        ({ label }) => label,
+      ),
+    ).toEqual(expectedLabels);
+  });
+
+  it("usa os seis rótulos próprios de S.G.I.O.", () => {
+    expect(
+      getCharacterAttributeDefinitions("sgio-soldados-fantasmas").map(
+        ({ label }) => label,
+      ),
+    ).toEqual([
+      "Potência",
+      "Mobilidade",
+      "Combate",
+      "Investigação",
+      "Tecnologia",
+      "Domínio",
+    ]);
+  });
+
+  it("preserva as mesmas chaves e a mesma ordem em todos os conjuntos", () => {
+    for (const campaignSlug of [
+      "operacao-neptune",
+      "sgio-soldados-fantasmas",
+      "campanha-sem-ruleset",
+    ]) {
+      expect(
+        getCharacterAttributeDefinitions(campaignSlug).map(({ key }) => key),
+      ).toEqual(CHARACTER_ATTRIBUTE_KEYS);
+    }
+  });
+});
+
 describe("conteúdo inicial honesto", () => {
-  it("mantém somente Neptune, O Prólogo e nenhum histórico fictício", async () => {
+  it("mantém Neptune e S.G.I.O. sem inventar histórico de sessões", async () => {
     const { database } = await createTestDatabase();
     const snapshot = await database.read();
 
     expect(snapshot.schemaVersion).toBe(6);
     expect(snapshot.campaigns.map((campaign) => campaign.slug)).toEqual([
       "operacao-neptune",
+      "sgio-soldados-fantasmas",
     ]);
     expect(snapshot.campaignChapters).toMatchObject([
+      { title: "O Prólogo", slug: "o-prologo", order: 1, status: "published" },
+      {
+        title: "Protocolo Fantasma",
+        slug: "protocolo-fantasma",
+        order: 1,
+        status: "published",
+      },
+    ]);
+    const neptune = snapshot.campaigns.find(
+      (campaign) => campaign.slug === "operacao-neptune",
+    );
+    expect(neptune).toMatchObject({
+      name: "Operação Neptune",
+      status: "draft",
+    });
+    expect(
+      snapshot.campaignChapters.filter(
+        (chapter) => chapter.campaignId === neptune?.id,
+      ),
+    ).toMatchObject([
       { title: "O Prólogo", slug: "o-prologo", order: 1, status: "published" },
     ]);
     expect(snapshot.campaignSessions).toEqual([]);
@@ -161,7 +235,11 @@ describe("conteúdo inicial honesto", () => {
 
     const migrated = await database.read();
     expect(migrated.schemaVersion).toBe(6);
-    expect(migrated.campaignChapters).toHaveLength(1);
+    expect(migrated.campaignChapters).toHaveLength(2);
+    expect(migrated.campaignChapters.map((chapter) => chapter.slug)).toEqual([
+      "o-prologo",
+      "protocolo-fantasma",
+    ]);
     expect(migrated.characterStatusOptions.length).toBeGreaterThan(0);
     expect(migrated.characterClassOptions.length).toBeGreaterThan(0);
     expect(migrated.virtualTables).toEqual([]);
@@ -803,7 +881,7 @@ describe("repositories e integridade", () => {
 });
 
 describe("leitura da experiência", () => {
-  it("lista apenas Neptune no seed e respeita membership pendente", async () => {
+  it("lista as duas campanhas e mantém S.G.I.O. restrita sem membership", async () => {
     const { database } = await createTestDatabase();
     const repositories = createLocalRepositories(database);
     const reader = new LocalCampaignReadRepository(database);
@@ -813,7 +891,10 @@ describe("leitura da experiência", () => {
     ]);
     expect(player && gameMaster).toBeTruthy();
     if (!player || !gameMaster) return;
-    expect(await reader.listCampaignCards()).toMatchObject([{ slug: "operacao-neptune" }]);
+    expect((await reader.listCampaignCards()).map(({ slug }) => slug)).toEqual([
+      "sgio-soldados-fantasmas",
+      "operacao-neptune",
+    ]);
     expect(await reader.listCampaignCardsForUser(player.id)).toMatchObject([{ slug: "operacao-neptune" }]);
 
     const extra = await repositories.campaigns.create({
@@ -831,7 +912,7 @@ describe("leitura da experiência", () => {
     await expect(reader.findCampaignAccessBySlug(extra.slug, player.id)).resolves.toMatchObject({
       membership: { status: "pending" },
     });
-    expect(await reader.listCampaignCardsForUser(gameMaster.id)).toHaveLength(2);
+    expect(await reader.listCampaignCardsForUser(gameMaster.id)).toHaveLength(3);
   });
 
   it("agrega O Prólogo, opções de ficha e zero sessões", async () => {

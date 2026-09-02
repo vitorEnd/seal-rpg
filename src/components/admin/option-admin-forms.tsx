@@ -14,7 +14,7 @@ import {
   SubmitButton,
 } from "@/components/forms/action-ui";
 import { CurrentImageControl } from "@/components/forms/current-image-control";
-import { CHARACTER_ATTRIBUTE_DEFINITIONS } from "@/domain/character-attributes";
+import { getCharacterAttributeDefinitions } from "@/domain/character-attributes";
 import type {
   Campaign,
   CharacterClassOption,
@@ -41,6 +41,7 @@ export function CharacterOptionAdminForm({
   const classOption = isStatus
     ? undefined
     : (option as CharacterClassOption | undefined);
+  const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
 
   return (
     <form
@@ -91,7 +92,7 @@ export function CharacterOptionAdminForm({
               </small>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              {CHARACTER_ATTRIBUTE_DEFINITIONS.map(({ key, label }) => {
+              {attributeDefinitions.map(({ key, label }) => {
                 const fieldName = `bonus_${key}`;
                 return (
                   <label key={key}>

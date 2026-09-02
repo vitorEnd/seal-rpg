@@ -12,6 +12,7 @@ import {
   campaignThemeStyle,
 } from "@/components/campaigns/campaign-presenters";
 import { ActionFeedback, SubmitButton } from "@/components/forms/action-ui";
+import { usesSgioRules } from "@/domain/campaign-rules";
 import type { CampaignMemberStatus } from "@/domain/entities";
 
 export function CampaignAccessCard({
@@ -29,10 +30,12 @@ export function CampaignAccessCard({
   );
   const imageUrl = campaign.coverImageUrl ?? campaign.backgroundImageUrl;
   const isPending = membershipStatus === "pending";
+  const isSgio = usesSgioRules(campaign.slug);
 
   return (
     <div
-      className={`archive-card campaign-access-card ${featured ? "featured" : ""}`}
+      className={`archive-card campaign-access-card ${isSgio ? "archive-card--sgio" : ""} ${featured ? "featured" : ""}`}
+      data-campaign-theme={isSgio ? "sgio" : "neptune"}
       style={campaignThemeStyle(campaign.primaryColor, campaign.secondaryColor)}
     >
       <article>

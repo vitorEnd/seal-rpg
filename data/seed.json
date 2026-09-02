@@ -56,6 +56,27 @@
       "storySummary": "A operação ainda não começou. O primeiro dossiê acompanha o encontro da equipe que será enviada ao Afeganistão.",
       "createdAt": "2026-08-23T12:00:00.000Z",
       "updatedAt": "2026-08-23T12:00:00.000Z"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "name": "S.G.I.O. — Os Soldados Fantasmas de Verdrum",
+      "slug": "sgio-soldados-fantasmas",
+      "shortDescription": "Agentes extraordinários investigam desaparecimentos ligados a um experimento que aprendeu a sobreviver.",
+      "description": "Mutantes, experimentos humanos e tecnologias impossíveis existem às margens do mundo conhecido. A Secretaria Geral de Intervenções Ocultas investiga, contém e, quando julga necessário, utiliza essas anomalias. Quando uma sequência de desaparecimentos na Escócia revela marcas de um protótipo biomecânico considerado morto, seis agentes com origens e capacidades extraordinárias são convocados. Entre segredos institucionais, poderes difíceis de controlar e uma criatura que aprende com cada encontro, eles precisarão se tornar uma equipe antes que o predador compreenda como derrotá-los.",
+      "setting": "Escócia contemporânea · instalações clandestinas · fenômenos anormais",
+      "genre": "Ação · suspense · super-heróis · ficção científica",
+      "status": "recruiting",
+      "coverImageUrl": "/art/sgio-hero.png",
+      "coverImageStorageKey": null,
+      "backgroundImageUrl": "/art/sgio-hero.png",
+      "backgroundImageStorageKey": null,
+      "primaryColor": "#e8b04a",
+      "secondaryColor": "#52788f",
+      "startDate": null,
+      "gameMasterUserId": "00000000-0000-4000-8000-000000000002",
+      "storySummary": "A operação ainda não começou. Rotinas controladas dentro da S.G.I.O. convergem quando desaparecimentos na Escócia revelam sinais de um projeto que deveria estar morto.",
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
     }
   ],
   "campaignChapters": [
@@ -73,6 +94,21 @@
       "completedAt": null,
       "createdAt": "2026-08-23T12:00:00.000Z",
       "updatedAt": "2026-08-23T12:00:00.000Z"
+    },
+    {
+      "id": "11000000-0000-4000-8000-000000000002",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "title": "Protocolo Fantasma",
+      "slug": "protocolo-fantasma",
+      "shortDescription": "As rotinas de seis indivíduos extraordinários convergem quando um projeto perdido leva a uma convocação para a Escócia.",
+      "description": "Antes da missão na Escócia, o capítulo acompanha a rotina dos futuros integrantes dentro da S.G.I.O.: treinamentos, exames, pesquisas e pequenos sinais de que algo não está sob controle. Enquanto Nathan Voss reconhece nos desaparecimentos marcas de um projeto enterrado, seis indivíduos são convocados e colocados pela primeira vez sob a mesma ordem.",
+      "backgroundImageUrl": "/art/sgio-hero.png",
+      "backgroundImageStorageKey": null,
+      "order": 1,
+      "status": "published",
+      "completedAt": null,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
     }
   ],
   "campaignMembers": [
@@ -95,6 +131,16 @@
       "joinedAt": "2026-08-23T12:00:00.000Z",
       "createdAt": "2026-08-23T12:00:00.000Z",
       "updatedAt": "2026-08-23T12:00:00.000Z"
+    },
+    {
+      "id": "20000000-0000-4000-8000-000000000101",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "role": "game_master",
+      "status": "approved",
+      "joinedAt": "2026-09-02T20:00:00.000Z",
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
     }
   ],
   "characters": [],
@@ -131,6 +177,72 @@
       "active": true,
       "createdAt": "2026-08-23T12:00:00.000Z",
       "updatedAt": "2026-08-23T12:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000101",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Em avaliação",
+      "slug": "em-avaliacao",
+      "color": "#e8b04a",
+      "order": 1,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000102",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Operacional",
+      "slug": "operacional",
+      "color": "#4e9f85",
+      "order": 2,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000103",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Sob supervisão",
+      "slug": "sob-supervisao",
+      "color": "#6f8fa1",
+      "order": 3,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000104",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Ferido",
+      "slug": "ferido",
+      "color": "#a94f55",
+      "order": 4,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000105",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Instável",
+      "slug": "instavel",
+      "color": "#c56a45",
+      "order": 5,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "32000000-0000-4000-8000-000000000106",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Contido",
+      "slug": "contido",
+      "color": "#725889",
+      "order": 6,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
     }
   ],
   "characterClassOptions": [
@@ -238,6 +350,132 @@
       "active": true,
       "createdAt": "2026-08-23T12:00:00.000Z",
       "updatedAt": "2026-08-23T12:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000101",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Operativo de campo",
+      "slug": "operativo-de-campo",
+      "description": "Especialista em confronto direto, armas e decisões rápidas sob ameaça.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 0,
+        "agility": 0,
+        "marksmanship": 1,
+        "perception": 0,
+        "technique": 0,
+        "control": 0
+      },
+      "order": 1,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000102",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Especialista tecnológico",
+      "slug": "especialista-tecnologico",
+      "description": "Cientista, inventor ou hacker capaz de dominar sistemas e equipamentos avançados.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 0,
+        "agility": 0,
+        "marksmanship": 0,
+        "perception": 0,
+        "technique": 1,
+        "control": 0
+      },
+      "order": 2,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000103",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Manifestação energética",
+      "slug": "manifestacao-energetica",
+      "description": "Canaliza uma força anormal que exige precisão, foco e domínio constante.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 0,
+        "agility": 0,
+        "marksmanship": 0,
+        "perception": 0,
+        "technique": 0,
+        "control": 1
+      },
+      "order": 3,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000104",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Organismo adaptativo",
+      "slug": "organismo-adaptativo",
+      "description": "Altera propriedades, responde ao ambiente e encontra novas formas de sobreviver.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 0,
+        "agility": 1,
+        "marksmanship": 0,
+        "perception": 0,
+        "technique": 0,
+        "control": 0
+      },
+      "order": 4,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000105",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Unidade biomecânica",
+      "slug": "unidade-biomecanica",
+      "description": "Corpo reforçado ou sintético criado para superar limites humanos.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 1,
+        "agility": 0,
+        "marksmanship": 0,
+        "perception": 0,
+        "technique": 0,
+        "control": 0
+      },
+      "order": 5,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
+    },
+    {
+      "id": "33000000-0000-4000-8000-000000000106",
+      "campaignId": "10000000-0000-4000-8000-000000000002",
+      "name": "Investigador anômalo",
+      "slug": "investigador-anomalo",
+      "description": "Rastreia padrões impossíveis, lê cenas e identifica fenômenos ocultos.",
+      "logoImageUrl": null,
+      "logoImageStorageKey": null,
+      "attributeBonuses": {
+        "physical": 0,
+        "agility": 0,
+        "marksmanship": 0,
+        "perception": 1,
+        "technique": 0,
+        "control": 0
+      },
+      "order": 6,
+      "active": true,
+      "createdAt": "2026-09-02T20:00:00.000Z",
+      "updatedAt": "2026-09-02T20:00:00.000Z"
     }
   ],
   "teams": [],

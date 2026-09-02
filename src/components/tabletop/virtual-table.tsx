@@ -48,6 +48,15 @@ const WORLD_HEIGHT = 1067;
 const MIN_ZOOM = 0.16;
 const MAX_ZOOM = 4.8;
 const DICE_SHORTCUTS = [20, 12, 10, 100, 8, 6, 4] as const;
+const TOKEN_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
+const TOKEN_IMAGE_OPTIMIZE_THRESHOLD = 5 * 1024 * 1024;
+const TOKEN_IMAGE_MAX_EDGE = 1600;
+const TOKEN_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+]);
 
 const rollTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
@@ -108,6 +117,70 @@ interface MapPanState {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+function canvasToWebp(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("TOKEN_IMAGE_ENCODE_FAILED"));
+      },
+      "image/webp",
+      quality,
+    );
+  });
+}
+
+async function prepareTokenImageForUpload(file: File): Promise<File> {
+  if (!TOKEN_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Use uma imagem JPEG, PNG, WebP ou AVIF.");
+  }
+  if (file.size <= TOKEN_IMAGE_OPTIMIZE_THRESHOLD) return file;
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("Não foi possível abrir essa imagem. Escolha outro arquivo.");
+  }
+
+  try {
+    const scale = Math.min(
+      1,
+      TOKEN_IMAGE_MAX_EDGE / Math.max(bitmap.width, bitmap.height),
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("TOKEN_IMAGE_CANVAS_UNAVAILABLE");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    let encoded: Blob | null = null;
+    for (const quality of [0.86, 0.72, 0.58]) {
+      encoded = await canvasToWebp(canvas, quality);
+      if (encoded.size <= TOKEN_IMAGE_OPTIMIZE_THRESHOLD) break;
+    }
+    if (!encoded || encoded.size > TOKEN_IMAGE_MAX_BYTES) {
+      throw new Error(
+        "A imagem continua maior que 6 MB após a otimização. Escolha uma imagem menor.",
+      );
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "token";
+    return new File([encoded], `${baseName}.webp`, {
+      type: "image/webp",
+      lastModified: file.lastModified,
+    });
+  } catch (error) {
+    if (error instanceof Error && !error.message.startsWith("TOKEN_IMAGE_")) {
+      throw error;
+    }
+    throw new Error("Não foi possível otimizar essa imagem. Escolha outro arquivo.");
+  } finally {
+    bitmap.close();
+  }
 }
 
 function tokenKindLabel(kind: TabletopTokenView["kind"]): string {
@@ -274,6 +347,11 @@ export function VirtualTable({
   const [modal, setModal] = useState<ModalName>(null);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
+  const [newTokenKind, setNewTokenKind] =
+    useState<TabletopTokenView["kind"]>("npc");
+  const [newTokenDisposition, setNewTokenDisposition] =
+    useState<TabletopTokenView["disposition"]>("ally");
+  const [newTokenQuantity, setNewTokenQuantity] = useState(1);
   const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
   const [diceAnimation, setDiceAnimation] = useState<DiceAnimation | null>(null);
   const [chapterTransition, setChapterTransition] =
@@ -589,12 +667,20 @@ export function VirtualTable({
       if (options?.optimisticTokenId) {
         pendingMoveIdsRef.current.delete(options.optimisticTokenId);
       }
-    } catch {
+    } catch (error) {
       if (options?.optimisticTokenId) {
         pendingMoveIdsRef.current.delete(options.optimisticTokenId);
       }
-      setNotice({ ok: false, message: "A conexão com a mesa foi interrompida." });
-      setAnnouncement("A conexão com a mesa foi interrompida.");
+      console.error("[mesa] comando interrompido antes de receber resposta", {
+        actionName,
+        error,
+      });
+      const message =
+        actionName === "create-token"
+          ? "O envio do token foi interrompido. Recarregue a página e tente novamente."
+          : "A conexão com a mesa foi interrompida.";
+      setNotice({ ok: false, message });
+      setAnnouncement(message);
       await refreshSnapshot();
     } finally {
       if (options?.optimisticTokenId) {
@@ -751,6 +837,8 @@ export function VirtualTable({
     snapshot.maps.find((map) => map.id !== snapshot.table.activeMapId) ??
     activeMap ??
     null;
+  const tokenCreationPending =
+    pendingAction === "prepare-token" || pendingAction === "create-token";
 
   const syncLabel =
     syncStatus === "synced"
@@ -1598,27 +1686,62 @@ export function VirtualTable({
         <TableModal
           title="Adicionar token"
           description="Personagens ficam vinculados ao jogador dono da ficha. NPCs, inimigos e objetos permanecem sob controle do mestre."
-          onClose={() => setModal(null)}
+          onClose={() => {
+            if (!tokenCreationPending) setModal(null);
+          }}
         >
           <form
             className="vtt-control-form"
             encType="multipart/form-data"
-            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            onSubmit={async (event: FormEvent<HTMLFormElement>) => {
               event.preventDefault();
               const formData = new FormData(event.currentTarget);
-              formData.set("campaignSlug", snapshot.campaign.slug);
-              formData.set("tableId", snapshot.table.id);
-              void executeCommand(
-                "create-token",
-                createVirtualTableTokenAction(formData),
-                { closeModal: true },
-              );
+              setPendingAction("prepare-token");
+              setNotice(null);
+              try {
+                const image = formData.get("image");
+                if (image instanceof File && image.size > 0) {
+                  formData.set("image", await prepareTokenImageForUpload(image));
+                }
+                formData.set("campaignSlug", snapshot.campaign.slug);
+                formData.set("tableId", snapshot.table.id);
+                await executeCommand(
+                  "create-token",
+                  createVirtualTableTokenAction(formData),
+                  { closeModal: true },
+                );
+              } catch (error) {
+                const message =
+                  error instanceof Error
+                    ? error.message
+                    : "Não foi possível preparar a imagem do token.";
+                setNotice({ ok: false, message });
+                setAnnouncement(message);
+                setPendingAction(null);
+              }
             }}
           >
             <div className="vtt-form-grid">
               <label>
                 <span>Tipo</span>
-                <select name="kind" defaultValue="npc">
+                <select
+                  name="kind"
+                  value={newTokenKind}
+                  onChange={(event) => {
+                    const kind = event.target.value as TabletopTokenView["kind"];
+                    setNewTokenKind(kind);
+                    setNewTokenDisposition(
+                      kind === "character"
+                        ? "player"
+                        : kind === "enemy"
+                          ? "hostile"
+                          : kind === "object"
+                            ? "object"
+                            : "ally",
+                    );
+                    if (kind === "character") setNewTokenQuantity(1);
+                  }}
+                >
                   <option value="character">Personagem</option>
                   <option value="npc">NPC</option>
                   <option value="enemy">Inimigo</option>
@@ -1627,7 +1750,15 @@ export function VirtualTable({
               </label>
               <label>
                 <span>Relação tática</span>
-                <select name="disposition" defaultValue="ally">
+                <select
+                  name="disposition"
+                  value={newTokenDisposition}
+                  onChange={(event) =>
+                    setNewTokenDisposition(
+                      event.target.value as TabletopTokenView["disposition"],
+                    )
+                  }
+                >
                   <option value="player">Operador</option>
                   <option value="ally">NPC aliado</option>
                   <option value="neutral">NPC neutro</option>
@@ -1645,26 +1776,51 @@ export function VirtualTable({
                   name="quantity"
                   type="number"
                   min="1"
-                  max="20"
+                  max={newTokenKind === "character" ? 1 : 20}
                   step="1"
-                  defaultValue="1"
+                  value={newTokenQuantity}
+                  onChange={(event) =>
+                    setNewTokenQuantity(
+                      clamp(
+                        Number(event.target.value) || 1,
+                        1,
+                        newTokenKind === "character" ? 1 : 20,
+                      ),
+                    )
+                  }
                 />
                 <small>
-                  Use 5 para criar cinco tokens iguais, numerados de 01 a 05.
+                  {newTokenKind === "character"
+                    ? "Cada ficha permite somente um token na mesa."
+                    : "Use 5 para criar cinco tokens iguais, numerados de 01 a 05."}
                 </small>
               </label>
-              <label className="full-span">
-                <span>Personagem associado</span>
-                <select name="characterId" defaultValue="">
-                  <option value="">Nenhum — controle exclusivo do mestre</option>
-                  {snapshot.characters.map((character) => (
-                    <option key={character.id} value={character.id}>
-                      {character.name}
-                    </option>
-                  ))}
-                </select>
-                <small>Ao associar uma ficha, somente seu dono e o mestre poderão mover o token.</small>
-              </label>
+              {newTokenKind === "character" ? (
+                <label className="full-span">
+                  <span>Ficha do personagem</span>
+                  <select name="characterId" defaultValue="" required>
+                    <option value="">Selecione uma ficha</option>
+                    {snapshot.characters.map((character) => {
+                      const alreadyOnMap = snapshot.tokens.some(
+                        (token) => token.characterId === character.id,
+                      );
+                      return (
+                        <option
+                          key={character.id}
+                          value={character.id}
+                          disabled={alreadyOnMap}
+                        >
+                          {character.name}
+                          {alreadyOnMap ? " — já está neste mapa" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <small>
+                    Cada ficha possui um único token por mesa. NPCs e inimigos não usam ficha.
+                  </small>
+                </label>
+              ) : null}
               <label>
                 <span>Tamanho</span>
                 <select name="size" defaultValue="0.055">
@@ -1684,6 +1840,7 @@ export function VirtualTable({
               <label>
                 <span>Imagem opcional</span>
                 <input name="image" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+                <small>Imagens grandes são reduzidas automaticamente para menos de 6 MB.</small>
               </label>
               <label className="full-span">
                 <span>Notas rápidas</span>
@@ -1739,12 +1896,21 @@ export function VirtualTable({
               </p>
             ) : null}
             <div className="vtt-form-actions">
-              <button type="submit" disabled={pendingAction === "create-token"}>
-                {pendingAction === "create-token"
-                  ? "Criando tokens..."
-                  : "Adicionar à mesa"}
+              <button
+                type="submit"
+                disabled={tokenCreationPending}
+              >
+                {pendingAction === "prepare-token"
+                  ? "Otimizando imagem..."
+                  : pendingAction === "create-token"
+                    ? "Criando tokens..."
+                    : "Adicionar à mesa"}
               </button>
-              <button type="button" onClick={() => setModal(null)}>
+              <button
+                type="button"
+                disabled={tokenCreationPending}
+                onClick={() => setModal(null)}
+              >
                 Cancelar
               </button>
             </div>

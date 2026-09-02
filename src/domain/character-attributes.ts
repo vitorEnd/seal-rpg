@@ -1,3 +1,5 @@
+import { usesSgioRules } from "@/domain/campaign-rules";
+
 export const CHARACTER_ATTRIBUTE_KEYS = [
   "physical",
   "agility",
@@ -59,6 +61,53 @@ export const CHARACTER_ATTRIBUTE_DEFINITIONS: readonly CharacterAttributeDefinit
       "Manter a calma sob pressão, resistir a medo ou pânico, decidir rápido e agir bem no caos.",
   },
 ];
+
+export const SGIO_CHARACTER_ATTRIBUTE_DEFINITIONS: readonly CharacterAttributeDefinition[] = [
+  {
+    key: "physical",
+    label: "Potência",
+    description:
+      "Força, durabilidade, impacto e manifestações físicas sobre-humanas.",
+  },
+  {
+    key: "agility",
+    label: "Mobilidade",
+    description:
+      "Reflexos, velocidade, furtividade, acrobacia e deslocamentos especiais.",
+  },
+  {
+    key: "marksmanship",
+    label: "Combate",
+    description:
+      "Luta corporal, armas, precisão e aplicação ofensiva de poderes.",
+  },
+  {
+    key: "perception",
+    label: "Investigação",
+    description:
+      "Sentidos, rastreamento, análise de cenas e identificação de anomalias.",
+  },
+  {
+    key: "technique",
+    label: "Tecnologia",
+    description:
+      "Ciência, engenharia, hacking, equipamentos avançados e biomecânica.",
+  },
+  {
+    key: "control",
+    label: "Domínio",
+    description:
+      "Controle fino de poderes, foco, estabilidade emocional e resistência mental.",
+  },
+];
+
+export function getCharacterAttributeDefinitions(
+  campaignSlug: string,
+): readonly CharacterAttributeDefinition[] {
+  return usesSgioRules(campaignSlug)
+    ? SGIO_CHARACTER_ATTRIBUTE_DEFINITIONS
+    : CHARACTER_ATTRIBUTE_DEFINITIONS;
+}
 
 export const EMPTY_CHARACTER_ATTRIBUTES: CharacterAttributes = {
   physical: 0,

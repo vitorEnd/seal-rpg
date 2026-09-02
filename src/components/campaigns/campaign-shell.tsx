@@ -10,8 +10,10 @@ import {
   type CampaignSectionId,
 } from "@/components/campaigns/campaign-presenters";
 import { OperationMenu } from "@/components/campaigns/operation-menu";
+import { SgioMenu } from "@/components/campaigns/sgio-menu";
 import { TacticalScrambleText } from "@/components/effects/tactical-scramble-text";
 import { SiteHeader } from "@/components/site/site-header";
+import { usesSgioRules } from "@/domain/campaign-rules";
 import type { CampaignMember, User } from "@/domain/entities";
 
 export function CampaignShell({
@@ -28,6 +30,7 @@ export function CampaignShell({
   children: ReactNode;
 }) {
   const { campaign } = experience;
+  const isSgio = usesSgioRules(campaign.slug);
   const [firstWord, ...remainingWords] = campaign.name.split(/\s+/);
   const accessLabel =
     user.role === "admin"
@@ -38,7 +41,8 @@ export function CampaignShell({
 
   return (
     <main
-      className="campaign-screen"
+      className={`campaign-screen ${isSgio ? "campaign-screen--sgio" : ""}`}
+      data-campaign-theme={isSgio ? "sgio" : "neptune"}
       style={campaignThemeStyle(campaign.primaryColor, campaign.secondaryColor)}
     >
       <section className="campaign-menu-hero" aria-labelledby="campaign-title">
@@ -55,39 +59,70 @@ export function CampaignShell({
             />
           ) : null}
           <div className="campaign-hero-shade" />
-          <div className="campaign-dust" />
+          {isSgio ? (
+            <>
+              <div className="sgio-hero-grid" />
+              <div className="sgio-hero-sweep" />
+              <div className="sgio-hero-reticle" />
+            </>
+          ) : (
+            <div className="campaign-dust" />
+          )}
           <div className="campaign-scanlines" />
         </div>
 
         <SiteHeader user={user} active="campaigns" overlay />
 
-        <div className="campaign-menu-layout">
-          <div className="campaign-title-block">
-            <p className="campaign-classification">
-              Arquivo restrito <span>·</span> {campaignStatusLabel(campaign.status)}
-            </p>
-            <h1 id="campaign-title">
-              <TacticalScrambleText text={firstWord} delay={120} />
-              {remainingWords.length ? (
-                <TacticalScrambleText
-                  text={remainingWords.join(" ")}
-                  as="strong"
-                  delay={280}
-                />
-              ) : null}
-            </h1>
-            <p className="campaign-setting">{campaign.setting}</p>
-          </div>
+        <div className={`campaign-menu-layout ${isSgio ? "sgio-menu-layout" : ""}`}>
+          {isSgio ? (
+            <div className="sgio-title-block">
+              <p className="campaign-classification">
+                Secretaria de intervenções ocultas <span>·</span>{" "}
+                {campaignStatusLabel(campaign.status)}
+              </p>
+              <h1 id="campaign-title">
+                <span>S.G.I.O.</span>
+                <strong>Soldados Fantasmas</strong>
+                <small>de Verdrum</small>
+              </h1>
+              <p className="campaign-setting">{campaign.setting}</p>
+            </div>
+          ) : (
+            <div className="campaign-title-block">
+              <p className="campaign-classification">
+                Arquivo restrito <span>·</span> {campaignStatusLabel(campaign.status)}
+              </p>
+              <h1 id="campaign-title">
+                <TacticalScrambleText text={firstWord} delay={120} />
+                {remainingWords.length ? (
+                  <TacticalScrambleText
+                    text={remainingWords.join(" ")}
+                    as="strong"
+                    delay={280}
+                  />
+                ) : null}
+              </h1>
+              <p className="campaign-setting">{campaign.setting}</p>
+            </div>
+          )}
 
-          <OperationMenu
-            campaignSlug={campaign.slug}
-            campaignName={campaign.name}
-            activeSection={activeSection}
-          />
+          {isSgio ? (
+            <SgioMenu
+              campaignSlug={campaign.slug}
+              campaignName={campaign.name}
+              activeSection={activeSection}
+            />
+          ) : (
+            <OperationMenu
+              campaignSlug={campaign.slug}
+              campaignName={campaign.name}
+              activeSection={activeSection}
+            />
+          )}
 
           <div className="campaign-access-strip">
-            <span>Acesso: {accessLabel}</span>
-            <span>Codinome: @{user.username}</span>
+            <span>{isSgio ? "Credencial" : "Acesso"}: {accessLabel}</span>
+            <span>{isSgio ? "Agente" : "Codinome"}: @{user.username}</span>
             {user.role === "admin" ? (
               <Link href="/admin">Abrir central administrativa</Link>
             ) : null}

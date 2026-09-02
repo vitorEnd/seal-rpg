@@ -4,9 +4,9 @@ import type { CampaignExperienceView } from "@/application/campaigns/campaign-re
 import { CharacterSheetForm } from "@/components/campaigns/character-sheet-form";
 import { formatDate } from "@/components/campaigns/campaign-presenters";
 import {
-  CHARACTER_ATTRIBUTE_DEFINITIONS,
   EMPTY_CHARACTER_ATTRIBUTES,
   calculateEffectiveAttributes,
+  getCharacterAttributeDefinitions,
 } from "@/domain/character-attributes";
 import type { User } from "@/domain/entities";
 
@@ -27,6 +27,9 @@ export function CharacterSheetSection({
   );
   const editableSheets = experience.characters.filter(
     (sheet) => user.role === "admin" || sheet.userId === user.id,
+  );
+  const attributeDefinitions = getCharacterAttributeDefinitions(
+    experience.campaign.slug,
   );
 
   return (
@@ -99,7 +102,7 @@ export function CharacterSheetSection({
                     role="group"
                     aria-label={`Atributos efetivos de ${sheet.name}`}
                   >
-                    {CHARACTER_ATTRIBUTE_DEFINITIONS.map(({ key, label }) => (
+                    {attributeDefinitions.map(({ key, label }) => (
                       <div
                         key={key}
                         className="grid min-w-0 gap-1 bg-[#0d1114] p-2.5"
