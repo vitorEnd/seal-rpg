@@ -138,6 +138,7 @@ export function CampaignShell({
       <div
         id="campaign-content"
         className="campaign-content-anchor"
+        role="region"
         tabIndex={-1}
         aria-label={`Conteúdo: ${campaignSections.find((section) => section.id === activeSection)?.label}`}
       >
