@@ -4,6 +4,8 @@
 
 Os onze mapas foram produzidos com a skill `imagegen`, usando o gerador integrado. Não houve fallback por CLI/API. Todos os arquivos finais são PNG de 1536 × 1024 pixels, em visão ortográfica superior, sem grade, texto, interface, personagens ou tokens.
 
+> Em 04/09/2026, os mapas do Complexo Subterrâneo e da Câmara Central foram substituídos por versões mais simples e sombrias. Os prompts finais estão em `docs/sgio-nest-redesign-prompts.md`.
+
 ## Arquivos finais
 
 - `public/art/maps/sgio-main-base.png`
