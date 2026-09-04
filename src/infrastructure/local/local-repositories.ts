@@ -27,8 +27,9 @@ import type {
   VirtualTableToken,
 } from "@/domain/entities";
 import {
+  getCharacterAttributeBudget,
   isValidCharacterAttributeBonuses,
-  isValidCharacterAttributes,
+  isValidCharacterAttributesForCampaign,
 } from "@/domain/character-attributes";
 import {
   compareCampaignChapters,
@@ -170,11 +171,12 @@ function assertHexColor(value: string, field: string): void {
   }
 }
 
-function assertCharacterAttributes(value: unknown): void {
-  if (!isValidCharacterAttributes(value)) {
+function assertCharacterAttributes(value: unknown, campaignSlug: string): void {
+  const budget = getCharacterAttributeBudget(campaignSlug);
+  if (!isValidCharacterAttributesForCampaign(value, campaignSlug)) {
     throw new RepositoryConflictError(
       "attributes",
-      "Distribua exatamente 8 pontos entre os atributos, usando de 0 a 5 em cada um.",
+      `Distribua exatamente ${budget} pontos entre os atributos desta campanha.`,
     );
   }
 }
@@ -938,8 +940,17 @@ class LocalCharacterRepository
   override async create(
     input: CreateEntityInput<Character>,
   ): Promise<Character> {
-    assertCharacterAttributes(input.attributes);
     return this.database.mutate((database) => {
+      const campaign = database.campaigns.find(
+        (item) => item.id === input.campaignId,
+      );
+      if (!campaign) {
+        throw new RepositoryConflictError(
+          "campaignId",
+          "A campanha informada não existe.",
+        );
+      }
+      assertCharacterAttributes(input.attributes, campaign.slug);
       if (
         database.characters.some(
           (item) =>
@@ -976,8 +987,18 @@ class LocalCharacterRepository
       const index = database.characters.findIndex((item) => item.id === id);
       if (index === -1) return null;
       const current = database.characters[index];
-      assertCharacterAttributes(input.attributes ?? current.attributes);
       const campaignId = input.campaignId ?? current.campaignId;
+      const campaign = database.campaigns.find((item) => item.id === campaignId);
+      if (!campaign) {
+        throw new RepositoryConflictError(
+          "campaignId",
+          "A campanha informada não existe.",
+        );
+      }
+      assertCharacterAttributes(
+        input.attributes ?? current.attributes,
+        campaign.slug,
+      );
       const slug = input.slug ?? current.slug;
       if (
         database.characters.some(

@@ -14,23 +14,50 @@ import {
   FieldError,
 } from "@/components/forms/action-ui";
 import { CurrentImageControl } from "@/components/forms/current-image-control";
+import {
+  CHARACTER_ATTRIBUTE_KEYS,
+  CHARACTER_ATTRIBUTE_MAX,
+  EMPTY_CHARACTER_ATTRIBUTES,
+  calculateEffectiveAttributes,
+  characterAttributeTotal,
+  getCharacterAttributeBudget,
+  getCharacterAttributeDefinitions,
+  type CharacterAttributeDefinition,
+  type CharacterAttributeKey,
+  type CharacterAttributes,
+} from "@/domain/character-attributes";
+import {
+  getCharacterOptionTerminology,
+  usesSgioRules,
+} from "@/domain/campaign-rules";
 import type {
   Campaign,
   Character,
   CharacterClassOption,
   CharacterStatusOption,
 } from "@/domain/entities";
-import {
-  CHARACTER_ATTRIBUTE_BUDGET,
-  CHARACTER_ATTRIBUTE_KEYS,
-  CHARACTER_ATTRIBUTE_MAX,
-  EMPTY_CHARACTER_ATTRIBUTES,
-  calculateEffectiveAttributes,
-  characterAttributeTotal,
-  getCharacterAttributeDefinitions,
-  type CharacterAttributeKey,
-  type CharacterAttributes,
-} from "@/domain/character-attributes";
+
+const SGIO_ATTRIBUTE_GROUPS: ReadonlyArray<{
+  label: string;
+  code: string;
+  keys: readonly CharacterAttributeKey[];
+}> = [
+  {
+    label: "Capacidades físicas",
+    code: "CORPO",
+    keys: ["physical", "agility", "marksmanship", "resilience"],
+  },
+  {
+    label: "Cognição e influência",
+    code: "MENTE",
+    keys: ["perception", "technique", "intellect", "presence"],
+  },
+  {
+    label: "Matriz anômala",
+    code: "NEXO",
+    keys: ["control", "energy", "adaptation"],
+  },
+];
 
 function initialAttributes(sheet?: Character): CharacterAttributes {
   return Object.fromEntries(
@@ -61,15 +88,24 @@ export function CharacterSheetForm({
     saveCharacterSheetAction,
     initialMutationState,
   );
+  const isSgio = usesSgioRules(campaign.slug);
+  const terminology = getCharacterOptionTerminology(campaign.slug);
+  const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
+  const attributeKeys = attributeDefinitions.map(({ key }) => key);
+  const attributeBudget = getCharacterAttributeBudget(campaign.slug);
   const availableStatuses = statusOptions.filter(
     (option) => option.active || option.id === sheet?.statusOptionId,
   );
   const availableClasses = classOptions.filter(
-    (option) => option.active || option.id === sheet?.classOptionId,
+    (option) =>
+      option.active || (!isSgio && option.id === sheet?.classOptionId),
   );
-  const [selectedClassId, setSelectedClassId] = useState(
-    sheet?.classOptionId ?? availableClasses[0]?.id ?? "",
-  );
+  const initialClassId = availableClasses.some(
+    (option) => option.id === sheet?.classOptionId,
+  )
+    ? (sheet?.classOptionId ?? "")
+    : (availableClasses[0]?.id ?? "");
+  const [selectedClassId, setSelectedClassId] = useState(initialClassId);
   const [attributes, setAttributes] = useState<CharacterAttributes>(() =>
     initialAttributes(sheet),
   );
@@ -78,15 +114,15 @@ export function CharacterSheetForm({
   const selectedClass = availableClasses.find(
     (option) => option.id === selectedClassId,
   );
-  const classBonuses =
-    selectedClass?.attributeBonuses ?? EMPTY_CHARACTER_ATTRIBUTES;
-  const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
+  const classBonuses = isSgio
+    ? EMPTY_CHARACTER_ATTRIBUTES
+    : (selectedClass?.attributeBonuses ?? EMPTY_CHARACTER_ATTRIBUTES);
   const effectiveAttributes = calculateEffectiveAttributes(
     attributes,
     classBonuses,
   );
-  const allocatedPoints = characterAttributeTotal(attributes);
-  const remainingPoints = CHARACTER_ATTRIBUTE_BUDGET - allocatedPoints;
+  const allocatedPoints = characterAttributeTotal(attributes, attributeKeys);
+  const remainingPoints = attributeBudget - allocatedPoints;
   const distributionComplete = remainingPoints === 0;
   const selectedBonuses = attributeDefinitions.filter(
     ({ key }) => classBonuses[key] > 0,
@@ -103,7 +139,7 @@ export function CharacterSheetForm({
     setAttributes((current) => {
       if (
         delta > 0 &&
-        (characterAttributeTotal(current) >= CHARACTER_ATTRIBUTE_BUDGET ||
+        (characterAttributeTotal(current, attributeKeys) >= attributeBudget ||
           current[key] >= CHARACTER_ATTRIBUTE_MAX)
       ) {
         return current;
@@ -115,21 +151,100 @@ export function CharacterSheetForm({
     });
   }
 
+  function renderAttributeCard({
+    key,
+    label,
+    description,
+  }: CharacterAttributeDefinition) {
+    const base = attributes[key];
+    const bonus = classBonuses[key];
+    const inputId = `${sheet?.id ?? "new"}-attribute-${key}`;
+    const descriptionId = `${inputId}-description`;
+
+    return (
+      <div
+        key={key}
+        className={`character-attribute-card ${isSgio ? "sgio-attribute-card" : ""}`}
+      >
+        <div className="character-attribute-copy">
+          <label htmlFor={inputId}>{label}</label>
+          <p id={descriptionId}>{description}</p>
+        </div>
+
+        <div className="character-attribute-control">
+          <button
+            type="button"
+            onClick={() => adjustAttribute(key, -1)}
+            disabled={base <= 0}
+            aria-label={`Diminuir ${label}`}
+          >
+            −
+          </button>
+          <input
+            id={inputId}
+            name={`attribute.${key}`}
+            type="number"
+            min={0}
+            max={CHARACTER_ATTRIBUTE_MAX}
+            step={1}
+            inputMode="numeric"
+            value={base}
+            onChange={(event) =>
+              updateAttribute(key, event.currentTarget.valueAsNumber)
+            }
+            aria-describedby={descriptionId}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => adjustAttribute(key, 1)}
+            disabled={
+              base >= CHARACTER_ATTRIBUTE_MAX ||
+              allocatedPoints >= attributeBudget
+            }
+            aria-label={`Aumentar ${label}`}
+          >
+            +
+          </button>
+        </div>
+
+        <div className="character-attribute-result">
+          <span>Base {base}</span>
+          {bonus > 0 ? <span>{terminology.singular} +{bonus}</span> : null}
+          <strong>Total {effectiveAttributes[key]}</strong>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <form action={formAction} className="sheet-form">
+    <form
+      action={formAction}
+      className={`sheet-form ${isSgio ? "sheet-form--sgio" : ""}`}
+    >
       <input type="hidden" name="id" value={sheet?.id ?? ""} />
       <input type="hidden" name="campaignId" value={campaign.id} />
       <div className="sheet-form-heading">
         <div>
-          <p className="campaign-kicker">{sheet ? "Editar ficha" : "Nova ficha operacional"}</p>
-          <h3>{sheet?.name ?? "Identidade do operador"}</h3>
+          <p className="campaign-kicker">
+            {sheet
+              ? isSgio
+                ? "Editar registro"
+                : "Editar ficha"
+              : isSgio
+                ? "Novo registro extraordinário"
+                : "Nova ficha operacional"}
+          </p>
+          <h3>
+            {sheet?.name ?? (isSgio ? "Identidade do agente" : "Identidade do operador")}
+          </h3>
         </div>
-        <span>Dados salvos localmente</span>
+        <span>{isSgio ? "Arquivo vivo // S.G.I.O." : "Sincronizado com a campanha"}</span>
       </div>
 
       {!hasOptions ? (
         <div className="campaign-notice" role="status">
-          O administrador ainda precisa criar pelo menos um status e uma classe antes que uma ficha possa ser salva.
+          O administrador ainda precisa criar pelo menos um status e {terminology.article} antes que uma ficha possa ser salva.
         </div>
       ) : null}
 
@@ -143,7 +258,12 @@ export function CharacterSheetForm({
           </label>
           <label>
             <span>Slug</span>
-            <input name="slug" defaultValue={sheet?.slug ?? ""} placeholder="nome-do-operador" required />
+            <input
+              name="slug"
+              defaultValue={sheet?.slug ?? ""}
+              placeholder="nome-do-agente"
+              required
+            />
             <FieldError state={state} name="slug" />
           </label>
           <label>
@@ -153,7 +273,11 @@ export function CharacterSheetForm({
           </label>
           <label>
             <span>Data de início</span>
-            <input type="date" name="startDate" defaultValue={sheet?.startDate?.slice(0, 10) ?? ""} />
+            <input
+              type="date"
+              name="startDate"
+              defaultValue={sheet?.startDate?.slice(0, 10) ?? ""}
+            />
             <FieldError state={state} name="startDate" />
           </label>
         </div>
@@ -164,220 +288,229 @@ export function CharacterSheetForm({
         <div className="sheet-grid">
           <label>
             <span>Descrição curta</span>
-            <textarea name="shortDescription" rows={2} defaultValue={sheet?.shortDescription ?? ""} required />
+            <textarea
+              name="shortDescription"
+              rows={2}
+              defaultValue={sheet?.shortDescription ?? ""}
+              required
+            />
             <FieldError state={state} name="shortDescription" />
           </label>
           <label>
             <span>Descrição completa</span>
-            <textarea name="description" rows={6} defaultValue={sheet?.description ?? ""} required />
+            <textarea
+              name="description"
+              rows={6}
+              defaultValue={sheet?.description ?? ""}
+              required
+            />
             <FieldError state={state} name="description" />
           </label>
         </div>
       </fieldset>
 
-      <fieldset className="sheet-fieldset">
+      <fieldset className={`sheet-fieldset ${isSgio ? "sgio-classification" : ""}`}>
         <legend>03 · Classificação</legend>
-        <div className="sheet-grid two-columns">
-          <label>
-            <span>Status</span>
-            <select name="statusOptionId" defaultValue={sheet?.statusOptionId ?? availableStatuses[0]?.id ?? ""} required>
-              {!availableStatuses.length ? <option value="">Aguardando opções</option> : null}
-              {availableStatuses.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}{option.active ? "" : " (inativo)"}
-                </option>
-              ))}
-            </select>
-            <FieldError state={state} name="statusOptionId" />
-          </label>
-          <label>
-            <span>Classe</span>
-            <select
-              name="classOptionId"
-              value={selectedClassId}
-              onChange={(event) => setSelectedClassId(event.target.value)}
-              required
-            >
-              {!availableClasses.length ? <option value="">Aguardando opções</option> : null}
-              {availableClasses.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}{option.active ? "" : " (inativa)"}
-                </option>
-              ))}
-            </select>
-            <FieldError state={state} name="classOptionId" />
-          </label>
-        </div>
-        {selectedClass ? (
-          <div className="mt-4 grid gap-4 border border-white/10 bg-black/25 p-4 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:items-center">
-            {selectedClass.logoImageUrl ? (
-              <Image
-                src={selectedClass.logoImageUrl}
-                alt={`Logo da classe ${selectedClass.name}`}
-                width={72}
-                height={72}
-                unoptimized={selectedClass.logoImageUrl.startsWith("/media/")}
-                className="h-[4.5rem] w-[4.5rem] border border-white/10 object-cover"
-              />
-            ) : (
-              <div
-                className="grid h-[4.5rem] w-[4.5rem] place-items-center border border-white/10 bg-white/5 font-mono text-lg font-bold text-white/35"
-                aria-hidden="true"
+        {isSgio ? (
+          <div className="sgio-classification-layout">
+            <label className="sgio-status-selector">
+              <span>Status do registro</span>
+              <select
+                name="statusOptionId"
+                defaultValue={sheet?.statusOptionId ?? availableStatuses[0]?.id ?? ""}
+                required
               >
-                {selectedClass.name.slice(0, 2).toLocaleUpperCase("pt-BR")}
+                {!availableStatuses.length ? (
+                  <option value="">Aguardando opções</option>
+                ) : null}
+                {availableStatuses.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}{option.active ? "" : " (inativo)"}
+                  </option>
+                ))}
+              </select>
+              <FieldError state={state} name="statusOptionId" />
+            </label>
+
+            <div className="sgio-type-selector">
+              <div className="sgio-type-heading">
+                <span>Tipo biológico</span>
+                <small>Escolha a natureza do agente</small>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="font-mono text-[.58rem] font-bold uppercase tracking-[.14em] text-orange-400">
-                Classe selecionada
-              </p>
-              <h4 className="mt-1 text-lg font-bold uppercase text-zinc-100">
-                {selectedClass.name}
-              </h4>
-              <p className="mt-1 text-sm leading-6 text-zinc-400">
-                {selectedClass.description || "Classe sem descrição cadastrada."}
-              </p>
-              <p className="mt-2 font-mono text-[.62rem] uppercase tracking-[.08em] text-zinc-300">
-                {selectedBonuses.length
-                  ? selectedBonuses
-                      .map(
-                        ({ key, label }) =>
-                          `+${classBonuses[key]} em ${label}`,
-                      )
-                      .join(" · ")
-                  : "Sem bônus de atributo"}
-              </p>
+              <div className="sgio-type-grid" role="radiogroup" aria-label="Tipo do agente">
+                {availableClasses.map((option, index) => (
+                  <label
+                    key={option.id}
+                    className={`sgio-type-option ${selectedClassId === option.id ? "is-selected" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="classOptionId"
+                      value={option.id}
+                      checked={selectedClassId === option.id}
+                      onChange={() => setSelectedClassId(option.id)}
+                      required
+                    />
+                    <span className="sgio-type-index" aria-hidden="true">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="sgio-type-mark" aria-hidden="true">
+                      {option.logoImageUrl ? (
+                        <Image
+                          src={option.logoImageUrl}
+                          alt=""
+                          width={54}
+                          height={54}
+                          unoptimized={option.logoImageUrl.startsWith("/media/")}
+                        />
+                      ) : (
+                        option.name.slice(0, 2).toLocaleUpperCase("pt-BR")
+                      )}
+                    </span>
+                    <span className="sgio-type-copy">
+                      <strong>{option.name}</strong>
+                      <small>{option.description || "Tipo ainda sem descrição."}</small>
+                    </span>
+                    <i aria-hidden="true" />
+                  </label>
+                ))}
+              </div>
+              <FieldError state={state} name="classOptionId" />
             </div>
           </div>
-        ) : null}
+        ) : (
+          <>
+            <div className="sheet-grid two-columns">
+              <label>
+                <span>Status</span>
+                <select
+                  name="statusOptionId"
+                  defaultValue={sheet?.statusOptionId ?? availableStatuses[0]?.id ?? ""}
+                  required
+                >
+                  {!availableStatuses.length ? <option value="">Aguardando opções</option> : null}
+                  {availableStatuses.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}{option.active ? "" : " (inativo)"}
+                    </option>
+                  ))}
+                </select>
+                <FieldError state={state} name="statusOptionId" />
+              </label>
+              <label>
+                <span>Classe</span>
+                <select
+                  name="classOptionId"
+                  value={selectedClassId}
+                  onChange={(event) => setSelectedClassId(event.target.value)}
+                  required
+                >
+                  {!availableClasses.length ? <option value="">Aguardando opções</option> : null}
+                  {availableClasses.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}{option.active ? "" : " (inativa)"}
+                    </option>
+                  ))}
+                </select>
+                <FieldError state={state} name="classOptionId" />
+              </label>
+            </div>
+            {selectedClass ? (
+              <div className="selected-class-card">
+                {selectedClass.logoImageUrl ? (
+                  <Image
+                    src={selectedClass.logoImageUrl}
+                    alt={`Logo da classe ${selectedClass.name}`}
+                    width={72}
+                    height={72}
+                    unoptimized={selectedClass.logoImageUrl.startsWith("/media/")}
+                  />
+                ) : (
+                  <div aria-hidden="true">
+                    {selectedClass.name.slice(0, 2).toLocaleUpperCase("pt-BR")}
+                  </div>
+                )}
+                <div>
+                  <p>Classe selecionada</p>
+                  <h4>{selectedClass.name}</h4>
+                  <span>{selectedClass.description || "Classe sem descrição cadastrada."}</span>
+                  <small>
+                    {selectedBonuses.length
+                      ? selectedBonuses
+                          .map(({ key, label }) => `+${classBonuses[key]} em ${label}`)
+                          .join(" · ")
+                      : "Sem bônus de atributo"}
+                  </small>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </fieldset>
 
-      <fieldset className="sheet-fieldset">
+      <fieldset className={`sheet-fieldset ${isSgio ? "sgio-attributes-fieldset" : ""}`}>
         <legend>04 · Atributos</legend>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-black/25 p-4">
+        <div className={`attribute-allocation ${isSgio ? "sgio-point-allocation" : ""}`}>
           <div>
-            <p className="font-mono text-[.6rem] font-bold uppercase tracking-[.14em] text-zinc-400">
-              Distribuição base
-            </p>
-            <p className="mt-1 text-sm text-zinc-300">
-              Divida exatamente {CHARACTER_ATTRIBUTE_BUDGET} pontos. O limite base é {CHARACTER_ATTRIBUTE_MAX} por atributo.
-            </p>
+            <p>Distribuição base</p>
+            <span>
+              Divida exatamente {attributeBudget} pontos. O limite base é {CHARACTER_ATTRIBUTE_MAX} por atributo.
+            </span>
           </div>
           <output
-            className={`font-mono text-xs font-bold uppercase tracking-[.12em] ${
-              distributionComplete ? "text-emerald-300" : "text-orange-300"
-            }`}
+            className={distributionComplete ? "is-complete" : ""}
             aria-live="polite"
           >
             {remainingPoints > 0
               ? `${remainingPoints} restante(s)`
               : remainingPoints < 0
                 ? `Retire ${Math.abs(remainingPoints)}`
-                : "8 de 8 distribuídos"}
+                : `${attributeBudget} de ${attributeBudget} distribuídos`}
           </output>
           <div
-            className="flex w-full gap-1"
+            className="attribute-progress"
             role="progressbar"
             aria-label="Pontos de atributos distribuídos"
             aria-valuemin={0}
-            aria-valuemax={CHARACTER_ATTRIBUTE_BUDGET}
-            aria-valuenow={Math.min(
-              CHARACTER_ATTRIBUTE_BUDGET,
-              Math.max(0, allocatedPoints),
-            )}
+            aria-valuemax={attributeBudget}
+            aria-valuenow={Math.min(attributeBudget, Math.max(0, allocatedPoints))}
           >
-            {Array.from({ length: CHARACTER_ATTRIBUTE_BUDGET }, (_, index) => (
+            {Array.from({ length: attributeBudget }, (_, index) => (
               <span
                 key={index}
-                className={`h-1.5 flex-1 ${
-                  index < allocatedPoints ? "bg-orange-400" : "bg-white/10"
-                }`}
+                className={index < allocatedPoints ? "is-filled" : ""}
                 aria-hidden="true"
               />
             ))}
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {attributeDefinitions.map(({ key, label, description }) => {
-            const base = attributes[key];
-            const bonus = classBonuses[key];
-            const inputId = `${sheet?.id ?? "new"}-attribute-${key}`;
-            const descriptionId = `${inputId}-description`;
-            return (
-              <div
-                key={key}
-                className="grid min-w-0 gap-4 border border-white/10 bg-[#090c0e] p-4"
-              >
-                <div>
-                  <label
-                    htmlFor={inputId}
-                    className="font-mono text-[.68rem] font-bold uppercase tracking-[.12em] text-zinc-100"
-                  >
-                    {label}
-                  </label>
-                  <p
-                    id={descriptionId}
-                    className="mt-2 text-xs leading-5 text-zinc-500"
-                  >
-                    {description}
-                  </p>
+        {isSgio ? (
+          <div className="sgio-attribute-groups">
+            {SGIO_ATTRIBUTE_GROUPS.map((group) => (
+              <section key={group.code} className="sgio-attribute-group">
+                <header className="sgio-attribute-group-heading">
+                  <span>{group.code}</span>
+                  <h4>{group.label}</h4>
+                  <small>{String(group.keys.length).padStart(2, "0")} parâmetros</small>
+                </header>
+                <div className="sgio-attribute-grid">
+                  {group.keys.map((key) => {
+                    const definition = attributeDefinitions.find(
+                      (candidate) => candidate.key === key,
+                    );
+                    return definition ? renderAttributeCard(definition) : null;
+                  })}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => adjustAttribute(key, -1)}
-                    disabled={base <= 0}
-                    className="grid h-10 w-10 shrink-0 place-items-center border border-white/15 bg-white/5 text-lg text-zinc-100 transition hover:border-orange-400/60 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-30"
-                    aria-label={`Diminuir ${label}`}
-                  >
-                    −
-                  </button>
-                  <input
-                    id={inputId}
-                    name={`attribute.${key}`}
-                    type="number"
-                    min={0}
-                    max={CHARACTER_ATTRIBUTE_MAX}
-                    step={1}
-                    inputMode="numeric"
-                    value={base}
-                    onChange={(event) =>
-                      updateAttribute(key, event.currentTarget.valueAsNumber)
-                    }
-                    aria-describedby={descriptionId}
-                    required
-                    className="h-10 min-w-0 flex-1 border border-white/15 bg-black/30 px-2 text-center text-lg font-bold text-zinc-50 outline-none focus:border-orange-400/70"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => adjustAttribute(key, 1)}
-                    disabled={
-                      base >= CHARACTER_ATTRIBUTE_MAX ||
-                      allocatedPoints >= CHARACTER_ATTRIBUTE_BUDGET
-                    }
-                    className="grid h-10 w-10 shrink-0 place-items-center border border-white/15 bg-white/5 text-lg text-zinc-100 transition hover:border-orange-400/60 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-30"
-                    aria-label={`Aumentar ${label}`}
-                  >
-                    +
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-white/10 pt-3 font-mono text-[.58rem] uppercase tracking-[.08em]">
-                  <span className="text-zinc-500">Base {base}</span>
-                  {bonus > 0 ? (
-                    <span className="text-orange-300">Classe +{bonus}</span>
-                  ) : null}
-                  <strong className="ml-auto text-zinc-100">
-                    Total {effectiveAttributes[key]}
-                  </strong>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-3">
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="character-attribute-grid">
+            {attributeDefinitions.map(renderAttributeCard)}
+          </div>
+        )}
+        <div className="attribute-field-error">
           <FieldError state={state} name="attributes" />
         </div>
       </fieldset>
@@ -387,8 +520,16 @@ export function CharacterSheetForm({
         <div className="sheet-grid two-columns">
           <label>
             <span>Capa</span>
-            <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp,image/avif" />
-            <small>{sheet?.coverImageUrl ? "Envie apenas para substituir a capa atual." : "JPEG, PNG, WebP ou AVIF · até 6 MB."}</small>
+            <input
+              type="file"
+              name="coverImage"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+            />
+            <small>
+              {sheet?.coverImageUrl
+                ? "Envie apenas para substituir a capa atual."
+                : "JPEG, PNG, WebP ou AVIF · até 6 MB."}
+            </small>
           </label>
           {sheet?.coverImageUrl ? (
             <CurrentImageControl
@@ -399,8 +540,16 @@ export function CharacterSheetForm({
           ) : null}
           <label>
             <span>Imagem de fundo</span>
-            <input type="file" name="backgroundImage" accept="image/jpeg,image/png,image/webp,image/avif" />
-            <small>{sheet?.backgroundImageUrl ? "Envie apenas para substituir o fundo atual." : "Imagem horizontal recomendada."}</small>
+            <input
+              type="file"
+              name="backgroundImage"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+            />
+            <small>
+              {sheet?.backgroundImageUrl
+                ? "Envie apenas para substituir o fundo atual."
+                : "Imagem horizontal recomendada."}
+            </small>
           </label>
           {sheet?.backgroundImageUrl ? (
             <CurrentImageControl
@@ -411,11 +560,19 @@ export function CharacterSheetForm({
           ) : null}
           <label>
             <span>Cor principal</span>
-            <input type="color" name="primaryColor" defaultValue={sheet?.primaryColor ?? campaign.primaryColor} />
+            <input
+              type="color"
+              name="primaryColor"
+              defaultValue={sheet?.primaryColor ?? campaign.primaryColor}
+            />
           </label>
           <label>
             <span>Cor secundária</span>
-            <input type="color" name="secondaryColor" defaultValue={sheet?.secondaryColor ?? campaign.secondaryColor} />
+            <input
+              type="color"
+              name="secondaryColor"
+              defaultValue={sheet?.secondaryColor ?? campaign.secondaryColor}
+            />
           </label>
         </div>
       </fieldset>
@@ -429,8 +586,8 @@ export function CharacterSheetForm({
           {pending ? "Salvando ficha..." : "Salvar ficha"}
         </button>
         {!distributionComplete ? (
-          <span className="font-mono text-[.58rem] uppercase tracking-[.1em] text-orange-300" role="status">
-            Distribua os 8 pontos para liberar o salvamento.
+          <span className="attribute-submit-hint" role="status">
+            Distribua os {attributeBudget} pontos para liberar o salvamento.
           </span>
         ) : null}
         <ActionFeedback state={state} />

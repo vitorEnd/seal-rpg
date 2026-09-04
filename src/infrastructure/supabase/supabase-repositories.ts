@@ -24,8 +24,9 @@ import type {
   VirtualTable,
 } from "@/domain/entities";
 import {
+  getCharacterAttributeBudget,
   isValidCharacterAttributeBonuses,
-  isValidCharacterAttributes,
+  isValidCharacterAttributesForCampaign,
 } from "@/domain/character-attributes";
 import type {
   CampaignChapterRepository,
@@ -104,11 +105,15 @@ function throwDatabaseError(
   throw new Error(`Supabase (${error.code}): ${error.message}`);
 }
 
-function assertCharacterAttributes(attributes: Character["attributes"]): void {
-  if (!isValidCharacterAttributes(attributes)) {
+function assertCharacterAttributes(
+  attributes: Character["attributes"],
+  campaignSlug: string,
+): void {
+  const budget = getCharacterAttributeBudget(campaignSlug);
+  if (!isValidCharacterAttributesForCampaign(attributes, campaignSlug)) {
     throw new RepositoryConflictError(
       "attributes",
-      "Distribua exatamente 8 pontos entre os atributos, usando de 0 a 5 em cada um.",
+      `Distribua exatamente ${budget} pontos entre os atributos desta campanha.`,
     );
   }
 }
@@ -529,6 +534,11 @@ function encodeClassOption(
     setIfDefined(row, "bonus_perception", input.attributeBonuses.perception);
     setIfDefined(row, "bonus_technique", input.attributeBonuses.technique);
     setIfDefined(row, "bonus_control", input.attributeBonuses.control);
+    setIfDefined(row, "bonus_resilience", input.attributeBonuses.resilience);
+    setIfDefined(row, "bonus_intellect", input.attributeBonuses.intellect);
+    setIfDefined(row, "bonus_presence", input.attributeBonuses.presence);
+    setIfDefined(row, "bonus_energy", input.attributeBonuses.energy);
+    setIfDefined(row, "bonus_adaptation", input.attributeBonuses.adaptation);
   }
   return row;
 }
@@ -592,6 +602,11 @@ function encodeCharacter(input: UpdateEntityInput<Character>): Record<string, un
     setIfDefined(row, "attribute_perception", input.attributes.perception);
     setIfDefined(row, "attribute_technique", input.attributes.technique);
     setIfDefined(row, "attribute_control", input.attributes.control);
+    setIfDefined(row, "attribute_resilience", input.attributes.resilience);
+    setIfDefined(row, "attribute_intellect", input.attributes.intellect);
+    setIfDefined(row, "attribute_presence", input.attributes.presence);
+    setIfDefined(row, "attribute_energy", input.attributes.energy);
+    setIfDefined(row, "attribute_adaptation", input.attributes.adaptation);
   }
   setIfDefined(row, "cover_image_url", input.coverImageUrl);
   setIfDefined(row, "cover_image_storage_key", input.coverImageStorageKey);
@@ -619,8 +634,25 @@ class SupabaseCharacterRepository
       message: "Já existe uma ficha com este slug nesta campanha.",
     });
   }
+  private async assertAttributesForCampaign(
+    campaignId: EntityId,
+    attributes: Character["attributes"],
+  ): Promise<void> {
+    const { data, error } = await this.client
+      .from("campaigns")
+      .select("slug")
+      .eq("id", campaignId)
+      .maybeSingle();
+    if (error) throwDatabaseError(error);
+    if (!data) {
+      throw new RepositoryConflictError(
+        "campaignId",
+        "A campanha informada não existe.",
+      );
+    }
+    assertCharacterAttributes(attributes, data.slug);
+  }
   protected encodeCreate(input: CreateEntityInput<Character>) {
-    assertCharacterAttributes(input.attributes);
     return encodeCharacter({
       ...input,
       equipment: input.equipment ?? [],
@@ -630,8 +662,11 @@ class SupabaseCharacterRepository
     });
   }
   protected encodeUpdate(input: UpdateEntityInput<Character>) {
-    if (input.attributes) assertCharacterAttributes(input.attributes);
     return encodeCharacter(input);
+  }
+  override async create(input: CreateEntityInput<Character>) {
+    await this.assertAttributesForCampaign(input.campaignId, input.attributes);
+    return super.create(input);
   }
   override async update(id: EntityId, input: UpdateEntityInput<Character>) {
     const keys = Object.keys(input);
@@ -647,6 +682,14 @@ class SupabaseCharacterRepository
       });
       if (error) throwDatabaseError(error);
       return mapCharacterRow(data);
+    }
+    if (input.attributes) {
+      const current = await this.findById(id);
+      if (!current) return null;
+      await this.assertAttributesForCampaign(
+        input.campaignId ?? current.campaignId,
+        input.attributes,
+      );
     }
     return super.update(id, input);
   }

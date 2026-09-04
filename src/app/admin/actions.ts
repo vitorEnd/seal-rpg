@@ -14,7 +14,14 @@ import {
   localDateTimeToIso,
   slugify,
 } from "@/application/forms/form-values";
-import { CHARACTER_CLASS_BONUS_MAX } from "@/domain/character-attributes";
+import {
+  CHARACTER_CLASS_BONUS_MAX,
+  EMPTY_CHARACTER_ATTRIBUTES,
+} from "@/domain/character-attributes";
+import {
+  getCharacterOptionTerminology,
+  usesSgioRules,
+} from "@/domain/campaign-rules";
 import { RepositoryConflictError } from "@/domain/repositories";
 import { InvalidStoredFileError } from "@/application/storage/file-storage-provider";
 import { getCurrentSession } from "@/lib/auth/current-user";
@@ -95,6 +102,11 @@ const optionSchema = z.object({
   bonus_perception: classBonusSchema,
   bonus_technique: classBonusSchema,
   bonus_control: classBonusSchema,
+  bonus_resilience: classBonusSchema,
+  bonus_intellect: classBonusSchema,
+  bonus_presence: classBonusSchema,
+  bonus_energy: classBonusSchema,
+  bonus_adaptation: classBonusSchema,
   order: z.coerce.number().int().min(1).max(999),
   active: z.boolean(),
 });
@@ -443,6 +455,11 @@ export async function saveCharacterOptionAction(
     bonus_perception: formData.get("bonus_perception") ?? 0,
     bonus_technique: formData.get("bonus_technique") ?? 0,
     bonus_control: formData.get("bonus_control") ?? 0,
+    bonus_resilience: formData.get("bonus_resilience") ?? 0,
+    bonus_intellect: formData.get("bonus_intellect") ?? 0,
+    bonus_presence: formData.get("bonus_presence") ?? 0,
+    bonus_energy: formData.get("bonus_energy") ?? 0,
+    bonus_adaptation: formData.get("bonus_adaptation") ?? 0,
     order: formData.get("order"),
     active: formData.get("active") === "on",
   });
@@ -451,6 +468,8 @@ export async function saveCharacterOptionAction(
   }
   const campaign = await repositories.campaigns.findById(parsed.data.campaignId);
   if (!campaign) return mutationError("Campanha não encontrada.", previousState);
+  const isSgio = usesSgioRules(campaign.slug);
+  const terminology = getCharacterOptionTerminology(campaign.slug);
   const logoFile =
     parsed.data.kind === "class" ? fileFrom(formData, "logoImage") : null;
   const removeLogo =
@@ -482,7 +501,10 @@ export async function saveCharacterOptionAction(
         ? await repositories.characterClassOptions.findById(parsed.data.id)
         : null;
       if (parsed.data.id && (!current || current.campaignId !== campaign.id)) {
-        return mutationError("Opção de classe não encontrada.", previousState);
+        return mutationError(
+          `Opção de ${terminology.singular.toLocaleLowerCase("pt-BR")} não encontrada.`,
+          previousState,
+        );
       }
       const logo = logoFile ? await storeImage(logoFile, campaign.id) : null;
       if (logo) newStorageKeys.push(logo.key);
@@ -496,14 +518,21 @@ export async function saveCharacterOptionAction(
         logoImageStorageKey:
           logo?.key ??
           (removeLogo ? null : current?.logoImageStorageKey ?? null),
-        attributeBonuses: {
-          physical: parsed.data.bonus_physical,
-          agility: parsed.data.bonus_agility,
-          marksmanship: parsed.data.bonus_marksmanship,
-          perception: parsed.data.bonus_perception,
-          technique: parsed.data.bonus_technique,
-          control: parsed.data.bonus_control,
-        },
+        attributeBonuses: isSgio
+          ? EMPTY_CHARACTER_ATTRIBUTES
+          : {
+              physical: parsed.data.bonus_physical,
+              agility: parsed.data.bonus_agility,
+              marksmanship: parsed.data.bonus_marksmanship,
+              perception: parsed.data.bonus_perception,
+              technique: parsed.data.bonus_technique,
+              control: parsed.data.bonus_control,
+              resilience: parsed.data.bonus_resilience,
+              intellect: parsed.data.bonus_intellect,
+              presence: parsed.data.bonus_presence,
+              energy: parsed.data.bonus_energy,
+              adaptation: parsed.data.bonus_adaptation,
+            },
         order: parsed.data.order,
         active: parsed.data.active,
       };
@@ -515,7 +544,10 @@ export async function saveCharacterOptionAction(
         if (!updated) {
           await removeStoredKeys(newStorageKeys);
           newStorageKeys.length = 0;
-          return mutationError("Opção de classe não encontrada.", previousState);
+          return mutationError(
+            `Opção de ${terminology.singular.toLocaleLowerCase("pt-BR")} não encontrada.`,
+            previousState,
+          );
         }
         newStorageKeys.length = 0;
         if (logo || removeLogo) {

@@ -8,6 +8,10 @@ import {
   calculateEffectiveAttributes,
   getCharacterAttributeDefinitions,
 } from "@/domain/character-attributes";
+import {
+  getCharacterOptionTerminology,
+  usesSgioRules,
+} from "@/domain/campaign-rules";
 import type { User } from "@/domain/entities";
 
 export function CharacterSheetSection({
@@ -31,15 +35,22 @@ export function CharacterSheetSection({
   const attributeDefinitions = getCharacterAttributeDefinitions(
     experience.campaign.slug,
   );
+  const isSgio = usesSgioRules(experience.campaign.slug);
+  const terminology = getCharacterOptionTerminology(experience.campaign.slug);
 
   return (
-    <section className="campaign-content-section" aria-labelledby="sheet-title">
+    <section
+      className={`campaign-content-section ${isSgio ? "sheet-section--sgio" : ""}`}
+      aria-labelledby="sheet-title"
+    >
       <header className="campaign-section-heading">
         <div>
           <p className="campaign-kicker">Arquivo de operador</p>
           <h2 id="sheet-title">Ficha</h2>
           <p className="section-intro">
-            Crie sua identidade, escolha uma classe liberada pelo administrador e importe as imagens que vão representar o personagem.
+            {isSgio
+              ? "Construa a identidade do agente, defina seu tipo e distribua capacidades humanas, tecnológicas ou anômalas."
+              : "Crie sua identidade, escolha uma classe liberada pelo administrador e importe as imagens que vão representar o personagem."}
           </p>
         </div>
         <div className="campaign-heading-aside">
@@ -49,7 +60,10 @@ export function CharacterSheetSection({
       </header>
 
       {experience.characters.length ? (
-        <div className="sheet-gallery" aria-label="Fichas criadas">
+        <div
+          className={`sheet-gallery ${isSgio ? "sheet-gallery--sgio" : ""}`}
+          aria-label="Fichas criadas"
+        >
           {experience.characters.map((sheet) => {
             const status = statusesById.get(sheet.statusOptionId);
             const characterClass = classesById.get(sheet.classOptionId);
@@ -60,7 +74,10 @@ export function CharacterSheetSection({
               classBonuses,
             );
             return (
-              <article key={sheet.id} className="sheet-card">
+              <article
+                key={sheet.id}
+                className={`sheet-card ${isSgio ? "sheet-card--sgio" : ""}`}
+              >
                 <div className="sheet-card-art">
                   {sheet.coverImageUrl ? (
                     <Image
@@ -92,7 +109,7 @@ export function CharacterSheetSection({
                           className="h-5 w-5 object-cover"
                         />
                       ) : null}
-                      {characterClass?.name ?? "Classe indisponível"}
+                      {characterClass?.name ?? terminology.unavailable}
                     </span>
                   </div>
                   <h3>{sheet.name}</h3>
@@ -114,9 +131,9 @@ export function CharacterSheetSection({
                           <strong className="text-lg leading-none text-zinc-100">
                             {effectiveAttributes[key]}
                           </strong>
-                          {classBonuses[key] > 0 ? (
+                          {!isSgio && classBonuses[key] > 0 ? (
                             <small className="font-mono text-[.48rem] uppercase text-orange-300">
-                              +{classBonuses[key]} classe
+                              +{classBonuses[key]} {terminology.singular.toLocaleLowerCase("pt-BR")}
                             </small>
                           ) : null}
                         </div>

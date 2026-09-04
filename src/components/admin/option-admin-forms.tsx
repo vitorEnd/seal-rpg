@@ -15,6 +15,10 @@ import {
 } from "@/components/forms/action-ui";
 import { CurrentImageControl } from "@/components/forms/current-image-control";
 import { getCharacterAttributeDefinitions } from "@/domain/character-attributes";
+import {
+  getCharacterOptionTerminology,
+  usesSgioRules,
+} from "@/domain/campaign-rules";
 import type {
   Campaign,
   CharacterClassOption,
@@ -42,6 +46,8 @@ export function CharacterOptionAdminForm({
     ? undefined
     : (option as CharacterClassOption | undefined);
   const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
+  const isSgio = usesSgioRules(campaign.slug);
+  const terminology = getCharacterOptionTerminology(campaign.slug);
 
   return (
     <form
@@ -82,7 +88,7 @@ export function CharacterOptionAdminForm({
             <FieldError state={state} name="description" />
           </label>
 
-          <div className="full-span grid gap-3">
+          {!isSgio ? <div className="full-span grid gap-3">
             <div>
               <span className="font-mono text-[.58rem] font-bold uppercase tracking-[.1em] text-zinc-300">
                 Bônus de atributos
@@ -111,10 +117,10 @@ export function CharacterOptionAdminForm({
                 );
               })}
             </div>
-          </div>
+          </div> : null}
 
           <label className="wide-field">
-            <span>Logo da classe</span>
+            <span>{isSgio ? "Símbolo do tipo" : "Logo da classe"}</span>
             <input
               type="file"
               name="logoImage"
@@ -131,7 +137,7 @@ export function CharacterOptionAdminForm({
             <div className="wide-field">
               <CurrentImageControl
                 src={classOption.logoImageUrl}
-                alt={`Logo atual da classe ${classOption.name}`}
+                alt={`${isSgio ? "Símbolo atual do tipo" : "Logo atual da classe"} ${classOption.name}`}
                 removeName="removeLogoImage"
                 variant="logo"
               />
@@ -146,7 +152,9 @@ export function CharacterOptionAdminForm({
       </label>
       <label className="admin-checkbox compact-checkbox">
         <input type="checkbox" name="active" defaultChecked={option?.active ?? true} />
-        <span>Ativa</span>
+        <span>
+          {isStatus ? "Ativo" : `${terminology.singular} ativo`}
+        </span>
       </label>
       <div className="option-actions">
         <SubmitButton className="admin-small-button">
@@ -158,7 +166,7 @@ export function CharacterOptionAdminForm({
             id={option.id}
             hiddenFields={{ kind }}
             label="Excluir"
-            description={`Excluir a opção “${option.name}”?`}
+            description={`Excluir ${isStatus ? "o status" : terminology.article} “${option.name}”?`}
           />
         ) : null}
       </div>

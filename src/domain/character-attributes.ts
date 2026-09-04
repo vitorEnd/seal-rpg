@@ -7,6 +7,11 @@ export const CHARACTER_ATTRIBUTE_KEYS = [
   "perception",
   "technique",
   "control",
+  "resilience",
+  "intellect",
+  "presence",
+  "energy",
+  "adaptation",
 ] as const;
 
 export type CharacterAttributeKey = (typeof CHARACTER_ATTRIBUTE_KEYS)[number];
@@ -20,6 +25,7 @@ export interface CharacterAttributeDefinition {
 }
 
 export const CHARACTER_ATTRIBUTE_BUDGET = 8;
+export const SGIO_CHARACTER_ATTRIBUTE_BUDGET = 6;
 export const CHARACTER_ATTRIBUTE_MAX = 5;
 export const CHARACTER_CLASS_BONUS_MAX = 5;
 
@@ -67,7 +73,7 @@ export const SGIO_CHARACTER_ATTRIBUTE_DEFINITIONS: readonly CharacterAttributeDe
     key: "physical",
     label: "Potência",
     description:
-      "Força, durabilidade, impacto e manifestações físicas sobre-humanas.",
+      "Força, impacto, capacidade de ruptura e manifestações físicas sobre-humanas.",
   },
   {
     key: "agility",
@@ -99,6 +105,36 @@ export const SGIO_CHARACTER_ATTRIBUTE_DEFINITIONS: readonly CharacterAttributeDe
     description:
       "Controle fino de poderes, foco, estabilidade emocional e resistência mental.",
   },
+  {
+    key: "resilience",
+    label: "Resistência",
+    description:
+      "Suportar trauma, venenos, exaustão, dor extrema e efeitos anormais prolongados.",
+  },
+  {
+    key: "intellect",
+    label: "Intelecto",
+    description:
+      "Raciocínio, estratégia, memória, dedução e compreensão de fenômenos complexos.",
+  },
+  {
+    key: "presence",
+    label: "Presença",
+    description:
+      "Influência, liderança, intimidação, leitura social e força de personalidade.",
+  },
+  {
+    key: "energy",
+    label: "Energia",
+    description:
+      "Reserva para ativar poderes, sustentar capacidades especiais e recuperar intensidade.",
+  },
+  {
+    key: "adaptation",
+    label: "Adaptação",
+    description:
+      "Improviso, evolução sob pressão e resposta a ambientes ou ameaças desconhecidas.",
+  },
 ];
 
 export function getCharacterAttributeDefinitions(
@@ -109,6 +145,12 @@ export function getCharacterAttributeDefinitions(
     : CHARACTER_ATTRIBUTE_DEFINITIONS;
 }
 
+export function getCharacterAttributeBudget(campaignSlug: string): number {
+  return usesSgioRules(campaignSlug)
+    ? SGIO_CHARACTER_ATTRIBUTE_BUDGET
+    : CHARACTER_ATTRIBUTE_BUDGET;
+}
+
 export const EMPTY_CHARACTER_ATTRIBUTES: CharacterAttributes = {
   physical: 0,
   agility: 0,
@@ -116,6 +158,11 @@ export const EMPTY_CHARACTER_ATTRIBUTES: CharacterAttributes = {
   perception: 0,
   technique: 0,
   control: 0,
+  resilience: 0,
+  intellect: 0,
+  presence: 0,
+  energy: 0,
+  adaptation: 0,
 };
 
 export const LEGACY_CHARACTER_ATTRIBUTES: CharacterAttributes = {
@@ -125,6 +172,11 @@ export const LEGACY_CHARACTER_ATTRIBUTES: CharacterAttributes = {
   perception: 1,
   technique: 1,
   control: 1,
+  resilience: 0,
+  intellect: 0,
+  presence: 0,
+  energy: 0,
+  adaptation: 0,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -157,19 +209,47 @@ function hasValidValues(
   });
 }
 
-export function characterAttributeTotal(attributes: CharacterAttributes): number {
-  return CHARACTER_ATTRIBUTE_KEYS.reduce(
-    (total, key) => total + attributes[key],
-    0,
-  );
+export function characterAttributeTotal(
+  attributes: CharacterAttributes,
+  keys: readonly CharacterAttributeKey[] = CHARACTER_ATTRIBUTE_KEYS,
+): number {
+  return keys.reduce((total, key) => total + attributes[key], 0);
 }
 
 export function isValidCharacterAttributes(
   value: unknown,
+  budget: number = CHARACTER_ATTRIBUTE_BUDGET,
 ): value is CharacterAttributes {
   return (
     hasValidValues(value, CHARACTER_ATTRIBUTE_MAX) &&
-    characterAttributeTotal(value) === CHARACTER_ATTRIBUTE_BUDGET
+    characterAttributeTotal(value) === budget
+  );
+}
+
+export function isValidCharacterAttributesForCampaign(
+  value: unknown,
+  campaignSlug: string,
+): value is CharacterAttributes {
+  if (!hasValidValues(value, CHARACTER_ATTRIBUTE_MAX)) return false;
+  const activeKeys = getCharacterAttributeDefinitions(campaignSlug).map(
+    ({ key }) => key,
+  );
+  const activeKeySet = new Set(activeKeys);
+  return (
+    CHARACTER_ATTRIBUTE_KEYS.every(
+      (key) => activeKeySet.has(key) || value[key] === 0,
+    ) &&
+    characterAttributeTotal(value, activeKeys) ===
+      getCharacterAttributeBudget(campaignSlug)
+  );
+}
+
+export function isValidCharacterAttributesForKnownCampaign(
+  value: unknown,
+): value is CharacterAttributes {
+  return (
+    isValidCharacterAttributes(value, CHARACTER_ATTRIBUTE_BUDGET) ||
+    isValidCharacterAttributes(value, SGIO_CHARACTER_ATTRIBUTE_BUDGET)
   );
 }
 
@@ -186,9 +266,15 @@ function copyAttributes(attributes: CharacterAttributes): CharacterAttributes {
 }
 
 export function normalizeCharacterAttributes(value: unknown): CharacterAttributes {
-  return copyAttributes(
-    isValidCharacterAttributes(value) ? value : LEGACY_CHARACTER_ATTRIBUTES,
-  );
+  if (isRecord(value)) {
+    const normalized = Object.fromEntries(
+      CHARACTER_ATTRIBUTE_KEYS.map((key) => [key, value[key] ?? 0]),
+    );
+    if (isValidCharacterAttributesForKnownCampaign(normalized)) {
+      return copyAttributes(normalized);
+    }
+  }
+  return copyAttributes(LEGACY_CHARACTER_ATTRIBUTES);
 }
 
 export function normalizeCharacterAttributeBonuses(

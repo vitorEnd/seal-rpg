@@ -5,11 +5,30 @@ import {
   type CampaignSectionId,
 } from "@/components/campaigns/campaign-presenters";
 
-const sectionProtocols: Record<CampaignSectionId, string> = {
-  campaign: "Arquivo central",
-  overview: "Briefing sigiloso",
-  sheet: "Registro de agente",
-  sessions: "Memória operacional",
+const sectionProfiles: Record<
+  CampaignSectionId,
+  { code: string; eyebrow: string; description: string }
+> = {
+  campaign: {
+    code: "ARC",
+    eyebrow: "Protocolos e capítulos",
+    description: "Acompanhe a operação em curso.",
+  },
+  overview: {
+    code: "BRF",
+    eyebrow: "Origem, ameaça e mandato",
+    description: "Leia o dossiê da organização.",
+  },
+  sheet: {
+    code: "AGT",
+    eyebrow: "Monte seu agente",
+    description: "Registre identidade e capacidades.",
+  },
+  sessions: {
+    code: "MEM",
+    eyebrow: "Memórias de campo",
+    description: "Consulte incursões e registros.",
+  },
 };
 
 export function SgioMenu({
@@ -22,40 +41,44 @@ export function SgioMenu({
   activeSection: CampaignSectionId;
 }) {
   return (
-    <nav className="sgio-command-menu" aria-label={`Terminal de ${campaignName}`}>
-      <header>
+    <nav className="sgio-command-menu" aria-label={`Módulos de ${campaignName}`}>
+      <div className="sgio-command-heading">
         <div>
-          <span aria-hidden="true">SGIO//GHOSTNET</span>
-          <strong>Terminal de intervenção</strong>
+          <span>GHOST DECK // 04 MÓDULOS</span>
+          <strong>Selecione um protocolo</strong>
         </div>
         <p>
-          <i aria-hidden="true" /> Canal protegido
+          <i aria-hidden="true" /> Sincronização ativa
         </p>
-      </header>
-
-      <div className="sgio-command-grid">
-        {campaignSections.map((section) => (
-          <Link
-            key={section.id}
-            href={`/campaigns/${encodeURIComponent(campaignSlug)}${section.path}#campaign-content`}
-            aria-current={activeSection === section.id ? "page" : undefined}
-            className="sgio-command-item"
-          >
-            <span aria-hidden="true">{section.number}</span>
-            <div>
-              <small>{sectionProtocols[section.id]}</small>
-              <strong>{section.label}</strong>
-            </div>
-            <i aria-hidden="true">↗</i>
-          </Link>
-        ))}
       </div>
 
-      <footer aria-hidden="true">
-        <span>Investigação</span>
-        <span>Contenção</span>
-        <span>Intervenção</span>
-      </footer>
+      <div className="sgio-command-tabs">
+        {campaignSections.map((section, index) => {
+          const profile = sectionProfiles[section.id];
+          const isActive = activeSection === section.id;
+          return (
+            <Link
+              key={section.id}
+              href={`/campaigns/${encodeURIComponent(campaignSlug)}${section.path}#campaign-content`}
+              aria-current={isActive ? "page" : undefined}
+              className="sgio-command-item"
+            >
+              <span className="sgio-command-index" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="sgio-command-copy">
+                <small>{profile.eyebrow}</small>
+                <strong>{section.label}</strong>
+                <em>{profile.description}</em>
+              </span>
+              <span className="sgio-command-signal" aria-hidden="true">
+                <b>{profile.code}</b>
+                <i />
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

@@ -70,8 +70,8 @@
       "coverImageStorageKey": null,
       "backgroundImageUrl": "/art/sgio-hero.png",
       "backgroundImageStorageKey": null,
-      "primaryColor": "#e8b04a",
-      "secondaryColor": "#52788f",
+      "primaryColor": "#ff465f",
+      "secondaryColor": "#51e7ef",
       "startDate": null,
       "gameMasterUserId": "00000000-0000-4000-8000-000000000002",
       "storySummary": "A operação ainda não começou. Rotinas controladas dentro da S.G.I.O. convergem quando desaparecimentos na Escócia revelam sinais de um projeto que deveria estar morto.",
@@ -354,15 +354,15 @@
     {
       "id": "33000000-0000-4000-8000-000000000101",
       "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Operativo de campo",
-      "slug": "operativo-de-campo",
-      "description": "Especialista em confronto direto, armas e decisões rápidas sob ameaça.",
+      "name": "Humano",
+      "slug": "humano",
+      "description": "Pessoa humana sem origem artificial obrigatória; treinamento, talento e escolhas definem suas capacidades.",
       "logoImageUrl": null,
       "logoImageStorageKey": null,
       "attributeBonuses": {
         "physical": 0,
         "agility": 0,
-        "marksmanship": 1,
+        "marksmanship": 0,
         "perception": 0,
         "technique": 0,
         "control": 0
@@ -375,9 +375,9 @@
     {
       "id": "33000000-0000-4000-8000-000000000102",
       "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Especialista tecnológico",
-      "slug": "especialista-tecnologico",
-      "description": "Cientista, inventor ou hacker capaz de dominar sistemas e equipamentos avançados.",
+      "name": "Mutante",
+      "slug": "mutante",
+      "description": "Organismo transformado por mutação natural, induzida ou desconhecida, capaz de manifestar traços extraordinários.",
       "logoImageUrl": null,
       "logoImageStorageKey": null,
       "attributeBonuses": {
@@ -385,7 +385,7 @@
         "agility": 0,
         "marksmanship": 0,
         "perception": 0,
-        "technique": 1,
+        "technique": 0,
         "control": 0
       },
       "order": 2,
@@ -396,9 +396,9 @@
     {
       "id": "33000000-0000-4000-8000-000000000103",
       "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Manifestação energética",
-      "slug": "manifestacao-energetica",
-      "description": "Canaliza uma força anormal que exige precisão, foco e domínio constante.",
+      "name": "Clone",
+      "slug": "clone",
+      "description": "Cópia biológica produzida ou modificada artificialmente, com memórias, finalidade e identidade próprias.",
       "logoImageUrl": null,
       "logoImageStorageKey": null,
       "attributeBonuses": {
@@ -407,7 +407,7 @@
         "marksmanship": 0,
         "perception": 0,
         "technique": 0,
-        "control": 1
+        "control": 0
       },
       "order": 3,
       "active": true,
@@ -417,62 +417,20 @@
     {
       "id": "33000000-0000-4000-8000-000000000104",
       "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Organismo adaptativo",
-      "slug": "organismo-adaptativo",
-      "description": "Altera propriedades, responde ao ambiente e encontra novas formas de sobreviver.",
+      "name": "Máquina",
+      "slug": "maquina",
+      "description": "Consciência sintética, corpo mecânico ou construção biomecânica criada para operar além dos limites orgânicos.",
       "logoImageUrl": null,
       "logoImageStorageKey": null,
       "attributeBonuses": {
         "physical": 0,
-        "agility": 1,
+        "agility": 0,
         "marksmanship": 0,
         "perception": 0,
         "technique": 0,
         "control": 0
       },
       "order": 4,
-      "active": true,
-      "createdAt": "2026-09-02T20:00:00.000Z",
-      "updatedAt": "2026-09-02T20:00:00.000Z"
-    },
-    {
-      "id": "33000000-0000-4000-8000-000000000105",
-      "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Unidade biomecânica",
-      "slug": "unidade-biomecanica",
-      "description": "Corpo reforçado ou sintético criado para superar limites humanos.",
-      "logoImageUrl": null,
-      "logoImageStorageKey": null,
-      "attributeBonuses": {
-        "physical": 1,
-        "agility": 0,
-        "marksmanship": 0,
-        "perception": 0,
-        "technique": 0,
-        "control": 0
-      },
-      "order": 5,
-      "active": true,
-      "createdAt": "2026-09-02T20:00:00.000Z",
-      "updatedAt": "2026-09-02T20:00:00.000Z"
-    },
-    {
-      "id": "33000000-0000-4000-8000-000000000106",
-      "campaignId": "10000000-0000-4000-8000-000000000002",
-      "name": "Investigador anômalo",
-      "slug": "investigador-anomalo",
-      "description": "Rastreia padrões impossíveis, lê cenas e identifica fenômenos ocultos.",
-      "logoImageUrl": null,
-      "logoImageStorageKey": null,
-      "attributeBonuses": {
-        "physical": 0,
-        "agility": 0,
-        "marksmanship": 0,
-        "perception": 1,
-        "technique": 0,
-        "control": 0
-      },
-      "order": 6,
       "active": true,
       "createdAt": "2026-09-02T20:00:00.000Z",
       "updatedAt": "2026-09-02T20:00:00.000Z"

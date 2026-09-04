@@ -16,6 +16,13 @@ import { SiteHeader } from "@/components/site/site-header";
 import { usesSgioRules } from "@/domain/campaign-rules";
 import type { CampaignMember, User } from "@/domain/entities";
 
+const sgioModuleBriefs: Record<CampaignSectionId, string> = {
+  campaign: "Protocolos ativos, capítulos e acesso à próxima intervenção.",
+  overview: "Mandato institucional, origem do caso e parâmetros da ameaça.",
+  sheet: "Registro biológico, capacidades e identidade dos agentes convocados.",
+  sessions: "Linha de memória compartilhada das operações do esquadrão.",
+};
+
 export function CampaignShell({
   experience,
   user,
@@ -32,6 +39,9 @@ export function CampaignShell({
   const { campaign } = experience;
   const isSgio = usesSgioRules(campaign.slug);
   const [firstWord, ...remainingWords] = campaign.name.split(/\s+/);
+  const activeSectionData = campaignSections.find(
+    (section) => section.id === activeSection,
+  );
   const accessLabel =
     user.role === "admin"
       ? "Administrador"
@@ -61,9 +71,9 @@ export function CampaignShell({
           <div className="campaign-hero-shade" />
           {isSgio ? (
             <>
-              <div className="sgio-hero-grid" />
-              <div className="sgio-hero-sweep" />
-              <div className="sgio-hero-reticle" />
+              <div className="sgio-hero-shards" />
+              <div className="sgio-hero-energy-column" />
+              <div className="sgio-hero-signal" />
             </>
           ) : (
             <div className="campaign-dust" />
@@ -73,11 +83,19 @@ export function CampaignShell({
 
         <SiteHeader user={user} active="campaigns" overlay />
 
-        <div className={`campaign-menu-layout ${isSgio ? "sgio-menu-layout" : ""}`}>
-          {isSgio ? (
+        {isSgio ? (
+          <div className="sgio-stage">
+            <div className="sgio-stage-topline" aria-hidden="true">
+              <span>GHOSTNET // VERDRUM</span>
+              <div>
+                <i /> Unidade extraordinária
+              </div>
+              <strong>Canal 07-A</strong>
+            </div>
+
             <div className="sgio-title-block">
               <p className="campaign-classification">
-                Secretaria de intervenções ocultas <span>·</span>{" "}
+                Secretaria de intervenções ocultas <span>·</span>
                 {campaignStatusLabel(campaign.status)}
               </p>
               <h1 id="campaign-title">
@@ -86,8 +104,39 @@ export function CampaignShell({
                 <small>de Verdrum</small>
               </h1>
               <p className="campaign-setting">{campaign.setting}</p>
+              <div className="sgio-title-metrics" aria-label="Estado da operação">
+                <span><small>Agentes</small><strong>{String(experience.characters.length).padStart(2, "0")}</strong></span>
+                <span><small>Capítulos</small><strong>{String(experience.chapters.length).padStart(2, "0")}</strong></span>
+                <span><small>Ameaça</small><strong>ÔMEGA</strong></span>
+              </div>
             </div>
-          ) : (
+
+            <aside className="sgio-active-module">
+              <span>Módulo selecionado</span>
+              <small>{activeSectionData?.number ?? "--"} // acesso autorizado</small>
+              <strong>{activeSectionData?.label ?? "Arquivo"}</strong>
+              <p>{sgioModuleBriefs[activeSection]}</p>
+              <i aria-hidden="true" />
+            </aside>
+
+            <SgioMenu
+              campaignSlug={campaign.slug}
+              campaignName={campaign.name}
+              activeSection={activeSection}
+            />
+
+            <div className="sgio-access-rail">
+              <span><small>Credencial</small>{accessLabel}</span>
+              <span><small>Agente</small>@{user.username}</span>
+              {user.role === "admin" ? (
+                <Link href="/admin">Central administrativa <i aria-hidden="true">↗</i></Link>
+              ) : (
+                <span><small>Estado</small>Conectado</span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="campaign-menu-layout">
             <div className="campaign-title-block">
               <p className="campaign-classification">
                 Arquivo restrito <span>·</span> {campaignStatusLabel(campaign.status)}
@@ -104,30 +153,21 @@ export function CampaignShell({
               </h1>
               <p className="campaign-setting">{campaign.setting}</p>
             </div>
-          )}
-
-          {isSgio ? (
-            <SgioMenu
-              campaignSlug={campaign.slug}
-              campaignName={campaign.name}
-              activeSection={activeSection}
-            />
-          ) : (
             <OperationMenu
               campaignSlug={campaign.slug}
               campaignName={campaign.name}
               activeSection={activeSection}
             />
-          )}
 
           <div className="campaign-access-strip">
-            <span>{isSgio ? "Credencial" : "Acesso"}: {accessLabel}</span>
-            <span>{isSgio ? "Agente" : "Codinome"}: @{user.username}</span>
+            <span>Acesso: {accessLabel}</span>
+            <span>Codinome: @{user.username}</span>
             {user.role === "admin" ? (
               <Link href="/admin">Abrir central administrativa</Link>
             ) : null}
           </div>
-        </div>
+          </div>
+        )}
 
         <a href="#campaign-content" className="campaign-scroll-cue">
           <span>Explorar seção</span>

@@ -10,8 +10,10 @@ import {
   calculateEffectiveAttributes,
   CHARACTER_ATTRIBUTE_KEYS,
   EMPTY_CHARACTER_ATTRIBUTES,
+  getCharacterAttributeBudget,
   getCharacterAttributeDefinitions,
   isValidCharacterAttributes,
+  isValidCharacterAttributesForCampaign,
   LEGACY_CHARACTER_ATTRIBUTES,
 } from "@/domain/character-attributes";
 import { resolveCampaignChapterProgression } from "@/domain/chapter-progression";
@@ -99,7 +101,7 @@ describe("atributos por campanha", () => {
     ).toEqual(expectedLabels);
   });
 
-  it("usa os seis rótulos próprios de S.G.I.O.", () => {
+  it("usa os onze rótulos próprios de S.G.I.O.", () => {
     expect(
       getCharacterAttributeDefinitions("sgio-soldados-fantasmas").map(
         ({ label }) => label,
@@ -111,19 +113,48 @@ describe("atributos por campanha", () => {
       "Investigação",
       "Tecnologia",
       "Domínio",
+      "Resistência",
+      "Intelecto",
+      "Presença",
+      "Energia",
+      "Adaptação",
     ]);
   });
 
-  it("preserva as mesmas chaves e a mesma ordem em todos os conjuntos", () => {
-    for (const campaignSlug of [
-      "operacao-neptune",
-      "sgio-soldados-fantasmas",
-      "campanha-sem-ruleset",
-    ]) {
-      expect(
-        getCharacterAttributeDefinitions(campaignSlug).map(({ key }) => key),
-      ).toEqual(CHARACTER_ATTRIBUTE_KEYS);
-    }
+  it("mantém atributos extraordinários exclusivos da S.G.I.O.", () => {
+    expect(
+      getCharacterAttributeDefinitions("operacao-neptune").map(({ key }) => key),
+    ).toEqual(CHARACTER_ATTRIBUTE_KEYS.slice(0, 6));
+    expect(
+      getCharacterAttributeDefinitions("sgio-soldados-fantasmas").map(
+        ({ key }) => key,
+      ),
+    ).toEqual(CHARACTER_ATTRIBUTE_KEYS);
+  });
+
+  it("aplica seis pontos à S.G.I.O. e impede atributos exclusivos em Neptune", () => {
+    const sgioAttributes = {
+      ...EMPTY_CHARACTER_ATTRIBUTES,
+      physical: 1,
+      agility: 1,
+      control: 1,
+      intellect: 1,
+      energy: 1,
+      adaptation: 1,
+    };
+    expect(getCharacterAttributeBudget("sgio-soldados-fantasmas")).toBe(6);
+    expect(
+      isValidCharacterAttributesForCampaign(
+        sgioAttributes,
+        "sgio-soldados-fantasmas",
+      ),
+    ).toBe(true);
+    expect(
+      isValidCharacterAttributesForCampaign(
+        { ...LEGACY_CHARACTER_ATTRIBUTES, physical: 1, energy: 1 },
+        "operacao-neptune",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -740,6 +771,7 @@ describe("repositories e integridade", () => {
     await expect(
       repositories.characters.update(character.id, {
         attributes: {
+          ...EMPTY_CHARACTER_ATTRIBUTES,
           physical: 6,
           agility: 2,
           marksmanship: 0,
@@ -752,6 +784,7 @@ describe("repositories e integridade", () => {
     await expect(
       repositories.characters.update(character.id, {
         attributes: {
+          ...EMPTY_CHARACTER_ATTRIBUTES,
           physical: 4,
           agility: 1,
           marksmanship: 1,

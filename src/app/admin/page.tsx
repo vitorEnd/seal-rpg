@@ -12,6 +12,7 @@ import { CharacterOptionAdminForm } from "@/components/admin/option-admin-forms"
 import { SessionAdminForm } from "@/components/admin/session-admin-forms";
 import { CharacterSheetForm } from "@/components/campaigns/character-sheet-form";
 import { SiteHeader } from "@/components/site/site-header";
+import { getCharacterOptionTerminology } from "@/domain/campaign-rules";
 import { getCurrentSession } from "@/lib/auth/current-user";
 import { repositories } from "@/lib/container";
 
@@ -25,7 +26,7 @@ const adminViews = [
   { id: "overview", number: "00", label: "Visão do arquivo" },
   { id: "campaigns", number: "01", label: "Campanhas" },
   { id: "chapters", number: "02", label: "Capítulos" },
-  { id: "options", number: "03", label: "Classes e status" },
+  { id: "options", number: "03", label: "Opções da ficha" },
   { id: "sheets", number: "04", label: "Fichas" },
   { id: "sessions", number: "05", label: "Sessões" },
   { id: "access", number: "06", label: "Acessos" },
@@ -204,6 +205,7 @@ export default async function AdminPage({
               {campaigns.map((campaign) => {
                 const campaignStatuses = statuses.filter((item) => item.campaignId === campaign.id);
                 const campaignClasses = classes.filter((item) => item.campaignId === campaign.id);
+                const terminology = getCharacterOptionTerminology(campaign.slug);
                 return (
                   <div key={campaign.id} className="admin-resource-group">
                     <div className="admin-resource-heading">
@@ -218,7 +220,7 @@ export default async function AdminPage({
                         <CharacterOptionAdminForm campaign={campaign} kind="status" />
                       </div>
                       <div>
-                        <h3>Classes disponíveis</h3>
+                        <h3>{terminology.plural} disponíveis</h3>
                         {campaignClasses.map((option) => (
                           <CharacterOptionAdminForm key={option.id} campaign={campaign} kind="class" option={option} />
                         ))}

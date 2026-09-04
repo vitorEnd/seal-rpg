@@ -370,11 +370,16 @@ export type Database = {
       character_class_options: {
         Row: {
           active: boolean
+          bonus_adaptation: number
           bonus_agility: number
           bonus_control: number
+          bonus_energy: number
+          bonus_intellect: number
           bonus_marksmanship: number
           bonus_perception: number
           bonus_physical: number
+          bonus_presence: number
+          bonus_resilience: number
           bonus_technique: number
           campaign_id: string
           created_at: string
@@ -389,11 +394,16 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          bonus_adaptation?: number
           bonus_agility?: number
           bonus_control?: number
+          bonus_energy?: number
+          bonus_intellect?: number
           bonus_marksmanship?: number
           bonus_perception?: number
           bonus_physical?: number
+          bonus_presence?: number
+          bonus_resilience?: number
           bonus_technique?: number
           campaign_id: string
           created_at?: string
@@ -408,11 +418,16 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          bonus_adaptation?: number
           bonus_agility?: number
           bonus_control?: number
+          bonus_energy?: number
+          bonus_intellect?: number
           bonus_marksmanship?: number
           bonus_perception?: number
           bonus_physical?: number
+          bonus_presence?: number
+          bonus_resilience?: number
           bonus_technique?: number
           campaign_id?: string
           created_at?: string
@@ -481,11 +496,16 @@ export type Database = {
       }
       characters: {
         Row: {
+          attribute_adaptation: number
           attribute_agility: number
           attribute_control: number
+          attribute_energy: number
+          attribute_intellect: number
           attribute_marksmanship: number
           attribute_perception: number
           attribute_physical: number
+          attribute_presence: number
+          attribute_resilience: number
           attribute_technique: number
           background_image_storage_key: string | null
           background_image_url: string | null
@@ -512,11 +532,16 @@ export type Database = {
           wounds: string[]
         }
         Insert: {
+          attribute_adaptation: number
           attribute_agility: number
           attribute_control: number
+          attribute_energy: number
+          attribute_intellect: number
           attribute_marksmanship: number
           attribute_perception: number
           attribute_physical: number
+          attribute_presence: number
+          attribute_resilience: number
           attribute_technique: number
           background_image_storage_key?: string | null
           background_image_url?: string | null
@@ -543,11 +568,16 @@ export type Database = {
           wounds?: string[]
         }
         Update: {
+          attribute_adaptation?: number
           attribute_agility?: number
           attribute_control?: number
+          attribute_energy?: number
+          attribute_intellect?: number
           attribute_marksmanship?: number
           attribute_perception?: number
           attribute_physical?: number
+          attribute_presence?: number
+          attribute_resilience?: number
           attribute_technique?: number
           background_image_storage_key?: string | null
           background_image_url?: string | null
@@ -1555,11 +1585,16 @@ export type Database = {
           target_character_id: string
         }
         Returns: {
+          attribute_adaptation: number
           attribute_agility: number
           attribute_control: number
+          attribute_energy: number
+          attribute_intellect: number
           attribute_marksmanship: number
           attribute_perception: number
           attribute_physical: number
+          attribute_presence: number
+          attribute_resilience: number
           attribute_technique: number
           background_image_storage_key: string | null
           background_image_url: string | null

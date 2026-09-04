@@ -11,11 +11,13 @@ import {
   zodFieldErrors,
 } from "@/application/forms/mutation-state";
 import {
-  CHARACTER_ATTRIBUTE_BUDGET,
   CHARACTER_ATTRIBUTE_KEYS,
   CHARACTER_ATTRIBUTE_MAX,
   characterAttributeTotal,
+  getCharacterAttributeBudget,
+  getCharacterAttributeDefinitions,
 } from "@/domain/character-attributes";
+import { getCharacterOptionTerminology } from "@/domain/campaign-rules";
 import { canViewCampaign } from "@/domain/permissions";
 import { RepositoryConflictError } from "@/domain/repositories";
 import { InvalidStoredFileError } from "@/application/storage/file-storage-provider";
@@ -53,18 +55,11 @@ const characterAttributesSchema = z
     perception: attributeScoreSchema,
     technique: attributeScoreSchema,
     control: attributeScoreSchema,
-  })
-  .superRefine((attributes, context) => {
-    const allocated = characterAttributeTotal(attributes);
-    if (allocated === CHARACTER_ATTRIBUTE_BUDGET) return;
-    const difference = CHARACTER_ATTRIBUTE_BUDGET - allocated;
-    context.addIssue({
-      code: "custom",
-      message:
-        difference > 0
-          ? `Distribua os ${difference} ponto(s) restante(s).`
-          : `Retire ${Math.abs(difference)} ponto(s) da distribuição.`,
-    });
+    resilience: attributeScoreSchema,
+    intellect: attributeScoreSchema,
+    presence: attributeScoreSchema,
+    energy: attributeScoreSchema,
+    adaptation: attributeScoreSchema,
   });
 const sheetSchema = z.object({
   id: z.union([idSchema, z.literal("")]),
@@ -186,7 +181,7 @@ export async function saveCharacterSheetAction(
     attributes: Object.fromEntries(
       CHARACTER_ATTRIBUTE_KEYS.map((key) => [
         key,
-        formData.get(`attribute.${key}`),
+        formData.get(`attribute.${key}`) ?? "0",
       ]),
     ),
     primaryColor: formData.get("primaryColor"),
@@ -199,6 +194,28 @@ export async function saveCharacterSheetAction(
 
   const campaign = await repositories.campaigns.findById(parsed.data.campaignId);
   if (!campaign) return mutationError("Campanha não encontrada.", previousState);
+  const attributeDefinitions = getCharacterAttributeDefinitions(campaign.slug);
+  const activeAttributeKeys = attributeDefinitions.map(({ key }) => key);
+  const activeAttributeSet = new Set(activeAttributeKeys);
+  const attributeBudget = getCharacterAttributeBudget(campaign.slug);
+  const allocatedPoints = characterAttributeTotal(
+    parsed.data.attributes,
+    activeAttributeKeys,
+  );
+  const hasUnexpectedAttributePoints = CHARACTER_ATTRIBUTE_KEYS.some(
+    (key) => !activeAttributeSet.has(key) && parsed.data.attributes[key] !== 0,
+  );
+  if (allocatedPoints !== attributeBudget || hasUnexpectedAttributePoints) {
+    const difference = attributeBudget - allocatedPoints;
+    const message = hasUnexpectedAttributePoints
+      ? "A distribuição contém atributos que não pertencem a esta campanha."
+      : difference > 0
+        ? `Distribua os ${difference} ponto(s) restante(s).`
+        : `Retire ${Math.abs(difference)} ponto(s) da distribuição.`;
+    return mutationError("Revise os atributos da ficha.", previousState, {
+      attributes: [message],
+    });
+  }
   const membership = await repositories.campaignMembers.findMembership(
     campaign.id,
     session.user.id,
@@ -233,8 +250,9 @@ export async function saveCharacterSheetAction(
     statusOption.campaignId !== campaign.id ||
     classOption.campaignId !== campaign.id
   ) {
+    const terminology = getCharacterOptionTerminology(campaign.slug);
     return mutationError(
-      "Escolha um status e uma classe válidos para esta campanha.",
+      `Escolha um status e ${terminology.article} válidos para esta campanha.`,
       previousState,
     );
   }
