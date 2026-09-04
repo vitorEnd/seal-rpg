@@ -196,8 +196,18 @@ describe("conteúdo inicial honesto", () => {
     expect(snapshot.virtualTables).toEqual([]);
     expect(snapshot.virtualTableTokens).toEqual([]);
     expect(snapshot.diceRolls).toEqual([]);
-    expect(snapshot.virtualTableMaps).toHaveLength(18);
-    expect(snapshot.virtualTableMaps[0]).toMatchObject({
+    const neptuneMaps = snapshot.virtualTableMaps.filter(
+      (map) => map.campaignId === neptune?.id,
+    );
+    const sgio = snapshot.campaigns.find(
+      (campaign) => campaign.slug === "sgio-soldados-fantasmas",
+    );
+    const sgioMaps = snapshot.virtualTableMaps.filter(
+      (map) => map.campaignId === sgio?.id,
+    );
+    expect(neptuneMaps).toHaveLength(18);
+    expect(sgioMaps).toHaveLength(11);
+    expect(neptuneMaps[0]).toMatchObject({
       name: "Navio cargueiro — convés principal",
       groupName: "Navio cargueiro",
       layerName: "Convés principal",
@@ -205,10 +215,23 @@ describe("conteúdo inicial honesto", () => {
       builtIn: true,
     });
     expect(
-      snapshot.virtualTableMaps.some(
+      neptuneMaps.some(
         (map) => map.groupName === "Operação Super Bowl",
       ),
     ).toBe(true);
+    expect(sgioMaps.map((map) => map.groupName)).toEqual([
+      "Ato 1 — S.G.I.O.",
+      "Ato 1 — S.G.I.O.",
+      "Ato 1 — S.G.I.O.",
+      "Ato 2 — Escócia",
+      "Ato 2 — Escócia",
+      "Ato 2 — Escócia",
+      "Ato 2 — Escócia",
+      "Ato 3 — Investigação",
+      "Ato 3 — Investigação",
+      "Ato 4 — Ninho",
+      "Ato 5 — Final",
+    ]);
     expect(snapshot.characters).toEqual([]);
     expect(snapshot.missions).toEqual([]);
     expect(snapshot.campaignEvents).toEqual([]);
@@ -251,7 +274,7 @@ describe("conteúdo inicial honesto", () => {
     expect(migrated.virtualTables).toEqual([]);
     expect(migrated.virtualTableTokens).toEqual([]);
     expect(migrated.diceRolls).toEqual([]);
-    expect(migrated.virtualTableMaps).toHaveLength(18);
+    expect(migrated.virtualTableMaps).toHaveLength(29);
     expect(migrated.campaigns[0]?.coverImageStorageKey).toBeNull();
   });
 
@@ -276,7 +299,7 @@ describe("conteúdo inicial honesto", () => {
     expect(migrated.virtualTables).toEqual([]);
     expect(migrated.virtualTableTokens).toEqual([]);
     expect(migrated.diceRolls).toEqual([]);
-    expect(migrated.virtualTableMaps).toHaveLength(18);
+    expect(migrated.virtualTableMaps).toHaveLength(29);
   });
 
   it("migra capítulos v5 sem inventar conclusões e bloqueia os posteriores", async () => {
@@ -366,11 +389,19 @@ describe("conteúdo inicial honesto", () => {
 
     const migrated = await database.read();
     expect(migrated.schemaVersion).toBe(6);
-    expect(migrated.virtualTableMaps).toHaveLength(18);
+    expect(migrated.virtualTableMaps).toHaveLength(29);
     expect(migrated.virtualTableMaps[0]?.description).toBe(
       "Descrição local preservada",
     );
-    expect(migrated.virtualTableMaps.slice(5).map((map) => map.groupName)).toEqual([
+    const neptuneId = existing.campaigns.find(
+      (campaign: Record<string, unknown>) => campaign.slug === "operacao-neptune",
+    ).id;
+    expect(
+      migrated.virtualTableMaps
+        .filter((map) => map.campaignId === neptuneId)
+        .slice(5)
+        .map((map) => map.groupName),
+    ).toEqual([
       "Zona de inserção",
       "Complexo industrial costeiro",
       "Complexo industrial costeiro",
@@ -453,7 +484,14 @@ describe("conteúdo inicial honesto", () => {
 
     const migrated = await database.read();
     expect(migrated.schemaVersion).toBe(6);
-    expect(migrated.virtualTableMaps.map((map) => map.layerName)).toEqual([
+    const neptuneId = legacy.campaigns.find(
+      (campaign: Record<string, unknown>) => campaign.slug === "operacao-neptune",
+    ).id;
+    expect(
+      migrated.virtualTableMaps
+        .filter((map) => map.campaignId === neptuneId)
+        .map((map) => map.layerName),
+    ).toEqual([
       "Convés principal",
       "Convés superior",
       "Nível inferior",

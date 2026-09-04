@@ -85,10 +85,26 @@ const NEPTUNE_MAP_IDS = {
   superbowlExecutiveRooftop: "12000000-0000-4000-8000-000000000018",
 } as const;
 
+const SGIO_MAP_IDS = {
+  mainBase: "12000000-0000-4000-8000-000000000101",
+  trainingArena: "12000000-0000-4000-8000-000000000102",
+  vossLaboratory: "12000000-0000-4000-8000-000000000103",
+  scotlandSafehouse: "12000000-0000-4000-8000-000000000104",
+  scottishPub: "12000000-0000-4000-8000-000000000105",
+  disappearanceAlley: "12000000-0000-4000-8000-000000000106",
+  victimApartment: "12000000-0000-4000-8000-000000000107",
+  abandonedStation: "12000000-0000-4000-8000-000000000108",
+  abandonedIndustrialComplex: "12000000-0000-4000-8000-000000000109",
+  undergroundNest: "12000000-0000-4000-8000-000000000110",
+  centralNestChamber: "12000000-0000-4000-8000-000000000111",
+} as const;
+
 function builtInTableMaps(campaigns: Campaign[]): VirtualTableMap[] {
   const campaign = campaigns.find((item) => item.slug === "operacao-neptune");
-  if (!campaign) return [];
   const timestamp = "2026-08-23T12:00:00.000Z";
+  const maps: VirtualTableMap[] = [];
+
+  if (campaign) {
   const common = {
     campaignId: campaign.id,
     imageFileId: null,
@@ -97,7 +113,7 @@ function builtInTableMaps(campaigns: Campaign[]): VirtualTableMap[] {
     createdAt: timestamp,
     updatedAt: timestamp,
   } as const;
-  return [
+  maps.push(
     {
       ...common,
       id: NEPTUNE_MAP_IDS.shipMain,
@@ -309,7 +325,159 @@ function builtInTableMaps(campaigns: Campaign[]): VirtualTableMap[] {
       scale: "large",
       order: 75,
     },
-  ];
+  );
+  }
+
+  const sgioCampaign = campaigns.find(
+    (item) => item.slug === "sgio-soldados-fantasmas",
+  );
+  if (!sgioCampaign) return maps;
+
+  const sgioCommon = {
+    campaignId: sgioCampaign.id,
+    imageFileId: null,
+    builtIn: true,
+    createdByUserId: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  } as const;
+
+  maps.push(
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.mainBase,
+      name: "Base Principal da S.G.I.O.",
+      description:
+        "Instalação subterrânea brutalista e futurista com comando, convivência, alojamentos, enfermaria e elevadores.",
+      groupName: "Ato 1 — S.G.I.O.",
+      layerName: "Base principal",
+      builtInImageUrl: "/art/maps/sgio-main-base.png",
+      scale: "huge",
+      order: 10,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.trainingArena,
+      name: "Arena de Treinamento da S.G.I.O.",
+      description:
+        "Arena modular preparada para capacidades sobre-humanas, com obstáculos, alvos holográficos e galeria de observação.",
+      groupName: "Ato 1 — S.G.I.O.",
+      layerName: "Arena de treinamento",
+      builtInImageUrl: "/art/maps/sgio-training-arena.png",
+      scale: "large",
+      order: 20,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.vossLaboratory,
+      name: "Laboratório de Nathan Voss",
+      description:
+        "Oficina avançada repleta de protótipos, braços robóticos e armaduras experimentais iluminadas em violeta.",
+      groupName: "Ato 1 — S.G.I.O.",
+      layerName: "Laboratório de Voss",
+      builtInImageUrl: "/art/maps/sgio-voss-laboratory.png",
+      scale: "medium",
+      order: 30,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.scotlandSafehouse,
+      name: "Safehouse da S.G.I.O.",
+      description:
+        "Prédio escocês discreto adaptado com comunicações, equipamentos portáteis e pequenas áreas de descanso.",
+      groupName: "Ato 2 — Escócia",
+      layerName: "Safehouse",
+      builtInImageUrl: "/art/maps/sgio-scotland-safehouse.png",
+      scale: "medium",
+      order: 40,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.scottishPub,
+      name: "Bar Escocês",
+      description:
+        "Pub tradicional de madeira escura, iluminação quente e vista para uma rua fria e úmida.",
+      groupName: "Ato 2 — Escócia",
+      layerName: "Bar escocês",
+      builtInImageUrl: "/art/maps/sgio-scottish-pub.png",
+      scale: "medium",
+      order: 50,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.disappearanceAlley,
+      name: "Beco do Desaparecimento",
+      description:
+        "Beco estreito e chuvoso com portas de serviço, escadas metálicas, passagens laterais e muitos pontos de sombra.",
+      groupName: "Ato 2 — Escócia",
+      layerName: "Beco do desaparecimento",
+      builtInImageUrl: "/art/maps/sgio-disappearance-alley.png",
+      scale: "medium",
+      order: 60,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.victimApartment,
+      name: "Apartamento da Vítima",
+      description:
+        "Apartamento pequeno e recentemente habitado, com sala, cozinha, quarto, banheiro e objetos pessoais.",
+      groupName: "Ato 2 — Escócia",
+      layerName: "Apartamento da vítima",
+      builtInImageUrl: "/art/maps/sgio-victim-apartment.png",
+      scale: "medium",
+      order: 70,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.abandonedStation,
+      name: "Estação Ferroviária Abandonada e Túneis",
+      description:
+        "Plataforma deteriorada conectada a trilhos, salas técnicas, corredores de manutenção e túneis escuros.",
+      groupName: "Ato 3 — Investigação",
+      layerName: "Estação e túneis",
+      builtInImageUrl: "/art/maps/sgio-abandoned-station-tunnels.png",
+      scale: "huge",
+      order: 80,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.abandonedIndustrialComplex,
+      name: "Complexo Industrial Abandonado",
+      description:
+        "Fábrica desativada com grandes galpões, maquinário, tubulações, salas técnicas e passarelas elevadas.",
+      groupName: "Ato 3 — Investigação",
+      layerName: "Complexo industrial",
+      builtInImageUrl: "/art/maps/sgio-abandoned-industrial-complex.png",
+      scale: "huge",
+      order: 90,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.undergroundNest,
+      name: "Complexo Subterrâneo — Ninho",
+      description:
+        "Instalação humana progressivamente reconstruída com metal, cabos, máquinas reaproveitadas e tecnologia biomecânica.",
+      groupName: "Ato 4 — Ninho",
+      layerName: "Complexo subterrâneo",
+      builtInImageUrl: "/art/maps/sgio-nest-underground-complex.png",
+      scale: "huge",
+      order: 100,
+    },
+    {
+      ...sgioCommon,
+      id: SGIO_MAP_IDS.centralNestChamber,
+      name: "Câmara Central do Ninho",
+      description:
+        "Câmara monumental com plataformas, passarelas, grandes tubulações e um núcleo biomecânico integrado.",
+      groupName: "Ato 5 — Final",
+      layerName: "Câmara central",
+      builtInImageUrl: "/art/maps/sgio-nest-central-chamber.png",
+      scale: "huge",
+      order: 110,
+    },
+  );
+
+  return maps;
 }
 
 type ErrorWithCode = Error & { code?: string };

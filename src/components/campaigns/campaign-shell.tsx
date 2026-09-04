@@ -113,7 +113,9 @@ export function CampaignShell({
 
             <aside className="sgio-active-module">
               <span>Módulo selecionado</span>
-              <small>{activeSectionData?.number ?? "--"} // acesso autorizado</small>
+              <small>
+                {activeSectionData?.number ?? "--"} {"// acesso autorizado"}
+              </small>
               <strong>{activeSectionData?.label ?? "Arquivo"}</strong>
               <p>{sgioModuleBriefs[activeSection]}</p>
               <i aria-hidden="true" />
